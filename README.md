@@ -1,3 +1,82 @@
+Steps to open locally:
+# Smart Asset Vault
+
+A secure mobile application for digital asset management and identity protection.
+
+## Repository
+
+GitHub: https://github.com/Pranith-2007/smart-asset-vault
+
+## Prerequisites
+
+Before running the project, install:
+
+- [Node.js](https://nodejs.org/) (LTS version recommended)
+- [Git](https://git-scm.com/downloads)
+- [Expo Go](https://expo.dev/go) on an Android phone (optional)
+
+## How to Run the Project
+
+### 1. Clone the repository
+
+Open a terminal and run:
+
+```bash
+git clone https://github.com/Pranith-2007/smart-asset-vault.git
+```
+
+### 2. Open the project folder
+
+```bash
+cd smart-asset-vault
+```
+
+### 3. Install dependencies
+
+```bash
+npm install
+```
+
+### 4. Start the development server
+
+```bash
+npx expo start
+```
+
+### 5. Open the application
+
+**Option A — Android phone**
+
+1. Install Expo Go from the Google Play Store.
+2. Connect your phone and computer to the same Wi-Fi network.
+3. Scan the QR code displayed in the terminal using Expo Go.
+
+**Option B — Web browser**
+
+If web support is configured, start the web version with:
+
+```bash
+npx expo start --web
+```
+
+Then open the local URL displayed in the terminal.
+
+## Troubleshooting
+
+If the app does not load, try restarting Expo with a cleared cache:
+
+```bash
+npx expo start --clear
+```
+
+Ensure that dependencies are installed and that your phone and computer can communicate over the network.
+
+## Development Status
+
+The application is under active development. Features, integrations, and setup requirements may change as development progresses.
+
+
+
 # Smart Asset Vault (frontend, stage 1)
 
 Expo SDK 57, React Native, TypeScript, Expo Router. Android-first. No backend yet.
