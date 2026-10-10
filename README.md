@@ -1,4 +1,4 @@
-Steps to open locally:
+# Steps to open locally:
 # Smart Asset Vault
 
 A secure mobile application for digital asset management and identity protection.
