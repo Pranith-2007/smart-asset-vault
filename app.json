@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "Smart Asset Vault",
+    "slug": "smart-asset-vault",
+    "scheme": "assetvault",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "android": {
+      "package": "com.example.smartassetvault",
+      "adaptiveIcon": {
+        "backgroundColor": "#1B4D45",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": true
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 168,
+          "backgroundColor": "#E8EBE8"
+        }
+      ]
+    ]
+  }
+}
