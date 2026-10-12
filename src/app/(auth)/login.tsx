@@ -34,13 +34,21 @@ export default function Login() {
     setNotice(null);
     if (Object.keys(next).length) return;
     setLoading(true);
-    try {
-      await authService.signIn({ email: email.trim(), password });
-    } catch (e) {
-      setNotice(e instanceof NotConnectedError ? 'not-connected' : 'failed');
-    } finally {
-      setLoading(false);
-    }
+  
+try {
+  await authService.signIn({ email: email.trim(), password });
+  router.replace('/');
+} catch (e) {
+  if (e instanceof NotConnectedError) {
+    setNotice('not-connected');
+  } else {
+    setNotice('failed');
+    console.error('Sign-in failed:', e);
+  }
+} finally {
+  setLoading(false);
+}
+
   };
 
   return (
@@ -54,12 +62,21 @@ export default function Login() {
           </AppText>
         </View>
 
-        {notice === 'not-connected' ? (
-          <Banner tone="warn" title="Sign-in isn’t available in this build" body="Accounts need the backend, which isn’t connected yet. Nothing you typed was sent anywhere. You can explore the app with sample data instead." />
-        ) : notice === 'failed' ? (
-          <Banner tone="bad" title="Couldn’t sign you in" body="Check your email and password, then try again." />
-        ) : null}
-
+        ```tsx
+{notice === 'not-connected' ? (
+  <Banner
+    tone="warn"
+    title="Sign-in isn’t available in this build"
+    body="Accounts need the backend, which isn’t connected yet. Nothing you typed was sent anywhere. You can explore the app with sample data instead."
+  />
+) : notice === 'failed' ? (
+  <Banner
+    tone="bad"
+    title="Couldn’t sign you in"
+    body="Check your email and password, then try again. If your email needs verification, check your inbox."
+  />
+) : null}
+```
         <View style={{ gap: space.lg }}>
           <Field label="Email" value={email} onChangeText={setEmail} error={errors.email} autoCapitalize="none" autoComplete="email" keyboardType="email-address" textContentType="emailAddress" returnKeyType="next" />
           <Field
