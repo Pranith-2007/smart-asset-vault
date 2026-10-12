@@ -9,6 +9,11 @@
  * from `src/services/index.ts`. Keys belong in EXPO_PUBLIC_* env vars for the
  * public anon key only. Never put a service-role key in the app.
  */
+
+
+import * as Linking from 'expo-linking';
+import { supabase } from '@/lib/supabase';
+
 export class NotConnectedError extends Error {
   constructor(feature = 'Accounts') {
     super(`${feature} are not connected yet.`);
@@ -16,19 +21,58 @@ export class NotConnectedError extends Error {
   }
 }
 
-export interface SignInInput { email: string; password: string }
-export interface SignUpInput extends SignInInput { fullName: string }
+export interface SignInInput {
+  email: string;
+  password: string;
+}
+
+export interface SignUpInput extends SignInInput {
+  fullName: string;
+}
 
 export interface AuthService {
   signIn(input: SignInInput): Promise<void>;
-  signUp(input: SignUpInput): Promise<void>;
+  signUp(
+    input: SignUpInput,
+  ): Promise<{ needsEmailConfirmation: boolean }>;
 }
 
-export const unconnectedAuthService: AuthService = {
-  async signIn() {
-    throw new NotConnectedError();
+export const supabaseAuthService: AuthService = {
+  async signIn({ email, password }) {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
   },
-  async signUp() {
-    throw new NotConnectedError();
-  },
-};
+
+async signUp({ fullName, email, password }) {
+  const redirectUrl = Linking.createURL('callback', {
+    scheme: 'assetvault',
+  });
+
+  console.log('Email verification redirect:', redirectUrl);
+
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: {
+        full_name: fullName,
+      },
+      emailRedirectTo: redirectUrl,
+    },
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return {
+    needsEmailConfirmation: !data.session,
+  };
+},
+}
