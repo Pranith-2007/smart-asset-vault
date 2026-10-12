@@ -1,4 +1,3 @@
-
 import { Redirect, Stack } from 'expo-router';
 import { colors } from '@/theme';
 import { useSession } from '@/state/session';
