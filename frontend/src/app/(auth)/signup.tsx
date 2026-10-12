@@ -35,9 +35,8 @@ const [touched, setTouched] = useState(false);
 const [loading, setLoading] = useState(false);
 
 const [notice, setNotice] = useState<
-'not-connected' | 'failed' | 'confirmation' | null
-
-(null);
+  'not-connected' | 'failed' | 'confirmation' | null
+>(null);
 
 const score = passwordScore(password);
 
