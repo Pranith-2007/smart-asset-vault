@@ -1,7 +1,22 @@
+
 import { View } from 'react-native';
 import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
-import { AppText, Avatar, Banner, Button, Entry, KeyValue, Register, Screen, ScreenHeader, SectionHeader, Segmented, Tag, useToast } from '@/components';
+import {
+  AppText,
+  Avatar,
+  Banner,
+  Button,
+  Entry,
+  KeyValue,
+  Register,
+  Screen,
+  ScreenHeader,
+  SectionHeader,
+  Segmented,
+  Tag,
+  useToast,
+} from '@/components';
 import type { PreviewDataMode } from '@/data/mock/mockRepository';
 import { useSecurity } from '@/state/security';
 import { useSession } from '@/state/session';
@@ -17,47 +32,163 @@ const modeHelp: Record<PreviewDataMode, string> = {
 export default function Profile() {
   const router = useRouter();
   const toast = useToast();
-  const { user, exitPreview, dataMode, setDataMode, resetSampleData } = useSession();
+
+  const {
+    user,
+    inPreview,
+    isAuthenticated,
+    signOut,
+    exitPreview,
+    dataMode,
+    setDataMode,
+    resetSampleData,
+  } = useSession();
+
   const { met, total } = useSecurity();
 
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      router.replace('/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+      toast.show('Could not log out. Please try again.');
+    }
+  };
+
+  const handleExitPreview = () => {
+    exitPreview();
+    router.replace('/login');
+  };
+
   return (
-    <Screen header={<ScreenHeader title="Profile" />} padBottom={false}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.lg, paddingHorizontal: space.xl, paddingBottom: space.xl }}>
+    <Screen
+      header={<ScreenHeader title="Profile" />}
+      padBottom={false}
+    >
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: space.lg,
+          paddingHorizontal: space.xl,
+          paddingBottom: space.xl,
+        }}
+      >
         <Avatar name={user.name} size={64} />
+
         <View style={{ flex: 1, gap: 4 }}>
           <AppText variant="heading">{user.name}</AppText>
-          <AppText variant="small" tone="muted">{user.email}</AppText>
-          <Tag label="Preview account" />
+          <AppText variant="small" tone="muted">
+            {user.email}
+          </AppText>
+          <Tag
+            label={inPreview ? 'Preview account' : 'Connected account'}
+          />
         </View>
       </View>
 
       <Register>
-        <Entry icon="lock" title="Security settings" subtitle={`${met} of ${total} checks complete`} onPress={() => router.push('/security')} />
-        <Entry title="Member since" meta={formatDate(user.memberSince)} />
+        <Entry
+          icon="lock"
+          title="Security settings"
+          subtitle={`${met} of ${total} checks complete`}
+          onPress={() => router.push('/security')}
+        />
+        <Entry
+          title="Member since"
+          meta={formatDate(user.memberSince)}
+        />
       </Register>
 
-      <SectionHeader title="Preview tools" />
-      <View style={{ paddingHorizontal: space.xl, gap: space.md }}>
-        <Banner tone="info" title="You’re using sample data" body="Changes you make are kept in memory and reset when the app restarts." />
-        <AppText variant="label" tone="soft">Show the app as</AppText>
-        <Segmented
-          value={dataMode}
-          onChange={(m) => setDataMode(m)}
-          options={[{ value: 'normal', label: 'Normal' }, { value: 'empty', label: 'Empty' }, { value: 'error', label: 'Errors' }]}
-        />
-        <AppText variant="small" tone="muted">{modeHelp[dataMode]}</AppText>
-        <Button title="Reset sample data" variant="secondary" compact icon="rotate-ccw" onPress={() => { resetSampleData(); toast.show('Sample data reset'); }} />
-      </View>
+      {inPreview && (
+        <>
+          <SectionHeader title="Preview tools" />
+
+          <View
+            style={{
+              paddingHorizontal: space.xl,
+              gap: space.md,
+            }}
+          >
+            <Banner
+              tone="info"
+              title="You’re using sample data"
+              body="Changes you make are kept in memory and reset when the app restarts."
+            />
+
+            <AppText variant="label" tone="soft">
+              Show the app as
+            </AppText>
+
+            <Segmented
+              value={dataMode}
+              onChange={(mode) => setDataMode(mode)}
+              options={[
+                { value: 'normal', label: 'Normal' },
+                { value: 'empty', label: 'Empty' },
+                { value: 'error', label: 'Errors' },
+              ]}
+            />
+
+            <AppText variant="small" tone="muted">
+              {modeHelp[dataMode]}
+            </AppText>
+
+            <Button
+              title="Reset sample data"
+              variant="secondary"
+              compact
+              icon="rotate-ccw"
+              onPress={() => {
+                resetSampleData();
+                toast.show('Sample data reset');
+              }}
+            />
+          </View>
+        </>
+      )}
 
       <SectionHeader title="About this build" />
+
       <Register>
-        <KeyValue label="Version" value={Constants.expoConfig?.version ?? '0.1.0'} />
-        <KeyValue label="Accounts" value="Not connected" />
-        <KeyValue label="Storage" value="Not connected" last />
+        <KeyValue
+          label="Version"
+          value={Constants.expoConfig?.version ?? '0.1.0'}
+        />
+        <KeyValue
+          label="Accounts"
+          value={
+            inPreview
+              ? 'Preview mode'
+              : isAuthenticated
+                ? 'Supabase authenticated'
+                : 'Not connected'
+          }
+        />
+        <KeyValue
+          label="Storage"
+          value="Not connected"
+          last
+        />
       </Register>
 
       <View style={{ padding: space.xl }}>
-        <Button title="Exit preview" variant="danger" icon="log-out" onPress={() => { exitPreview(); router.replace('/login'); }} />
+        {inPreview ? (
+          <Button
+            title="Exit preview"
+            variant="danger"
+            icon="log-out"
+            onPress={handleExitPreview}
+          />
+        ) : isAuthenticated ? (
+          <Button
+            title="Log out"
+            variant="danger"
+            icon="log-out"
+            onPress={handleLogout}
+          />
+        ) : null}
       </View>
     </Screen>
   );
