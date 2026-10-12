@@ -1,5 +1,6 @@
+
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { View, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Linking from 'expo-linking';
 
@@ -21,12 +22,22 @@ export default function AuthCallback() {
 
         if (!url) {
           throw new Error(
-            'No verification link was received. Open the link from your email again.',
+            'No verification link was received. Please open the email link again.',
           );
         }
 
         const parsed = Linking.parse(url);
         const params = parsed.queryParams ?? {};
+
+        const errorDescription =
+          typeof params.error_description === 'string'
+            ? params.error_description
+            : undefined;
+
+        if (errorDescription) {
+          throw new Error(errorDescription);
+        }
+
         const code =
           typeof params.code === 'string' ? params.code : undefined;
 
@@ -38,36 +49,39 @@ export default function AuthCallback() {
         } else {
           const fragment = url.split('#')[1] ?? '';
           const hashParams = new URLSearchParams(fragment);
+
           const accessToken = hashParams.get('access_token');
           const refreshToken = hashParams.get('refresh_token');
-          const errorDescription = hashParams.get('error_description');
+          const hashError = hashParams.get('error_description');
 
-          if (errorDescription) {
-            throw new Error(errorDescription);
+          if (hashError) {
+            throw new Error(hashError);
           }
 
-          if (accessToken && refreshToken) {
-            const { error } = await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken,
-            });
-
-            if (error) throw error;
-          } else {
+          if (!accessToken || !refreshToken) {
             throw new Error(
-              'The verification link is incomplete or has expired. Request a new one.',
+              'The confirmation link is incomplete or expired. Please request a new email.',
             );
           }
+
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+
+          if (error) throw error;
         }
 
         if (!active) return;
 
-        setMessage('Email verified! Redirecting to your vault...');
+        setMessage('Email verified! Opening your vault...');
+
         router.replace('/');
       } catch (error) {
         if (!active) return;
 
         console.error('Auth callback failed:', error);
+
         setFailed(true);
         setMessage(
           error instanceof Error
@@ -95,18 +109,20 @@ export default function AuthCallback() {
           gap: space.lg,
         }}
       >
+        {!failed && <ActivityIndicator size="large" />}
+
         <AppText variant="title">
           {failed ? 'Verification unsuccessful' : 'Email verification'}
         </AppText>
 
         <AppText tone="soft">{message}</AppText>
 
-        {failed ? (
+        {failed && (
           <Button
             title="Return to sign in"
             onPress={() => router.replace('/login')}
           />
-        ) : null}
+        )}
       </View>
     </Screen>
   );
