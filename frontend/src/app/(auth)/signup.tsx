@@ -1,13 +1,16 @@
 import { useState } from 'react';
 import { View } from 'react-native';
-import { useRouter } from 'expo-router';
-import { AppText, Banner, Button, Field, Icon, PasswordToggle, Screen, ScreenHeader } from '@/components';
+import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
+import { AppText, Banner, Button, Field, Icon, PasswordToggle, Screen, ScreenHeader, SelectedPortal } from '@/components';
+import { parsePortal, portals } from '@/domain/portals';
 import { authService, NotConnectedError } from '@/services';
 import { colors, space } from '@/theme';
 import { isEmail, passwordRules, passwordScore } from '@/utils/validation';
 
 export default function Signup() {
   const router = useRouter();
+  const { portal: portalParam } = useLocalSearchParams<{ portal?: string }>();
+  const portalId = parsePortal(portalParam);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -26,6 +29,10 @@ export default function Signup() {
   };
   const show_ = (k: keyof typeof errors) => (touched ? errors[k] : undefined);
 
+  // Opened without a valid portal (direct link): start from the portal screen.
+  if (!portalId) return <Redirect href="/portal" />;
+  const portal = portals[portalId];
+
   const submit = async () => {
     setTouched(true);
     setNotice(null);
@@ -43,6 +50,10 @@ export default function Signup() {
   return (
     <Screen header={<ScreenHeader title="Create your account" onBack={() => router.back()} />}>
       <View style={{ paddingHorizontal: space.xl, gap: space.xxl }}>
+        <SelectedPortal portal={portal} caption="Creating an account for" onChange={() => router.dismissTo('/portal')} />
+        {portalId !== 'personal' ? (
+          <Banner tone="info" title="Account creation for this portal isn’t designed yet" body="Who may open an account here, and what it can see, will be decided and enforced by the backend." />
+        ) : null}
         <AppText tone="soft">A name and a strong password are all you need. You’ll add recovery and sign-in protection after.</AppText>
 
         {notice === 'not-connected' ? (

@@ -1,23 +1,17 @@
 import { useState } from 'react';
 import { View } from 'react-native';
-import { useRouter } from 'expo-router';
-import { AppText, Banner, Button, Dial, Field, PasswordToggle, Screen } from '@/components';
+import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
+import { AppText, AuthBrand, Banner, Button, Field, PasswordToggle, Screen, SelectedPortal } from '@/components';
+import { parsePortal, portals } from '@/domain/portals';
 import { authService, NotConnectedError } from '@/services';
 import { useSession } from '@/state/session';
 import { colors, space } from '@/theme';
 import { isEmail } from '@/utils/validation';
 
-function AuthBrand() {
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
-      <Dial value={8} size={40} showValue={false} />
-      <AppText variant="heading">Smart Asset Vault</AppText>
-    </View>
-  );
-}
-
 export default function Login() {
   const router = useRouter();
+  const { portal: portalParam } = useLocalSearchParams<{ portal?: string }>();
+  const portalId = parsePortal(portalParam);
   const { enterPreview } = useSession();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -25,6 +19,10 @@ export default function Login() {
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+
+  // Opened without a valid portal (direct link, or after exiting the preview): start from the portal screen.
+  if (!portalId) return <Redirect href="/portal" />;
+  const portal = portals[portalId];
 
   const submit = async () => {
     const next: typeof errors = {};
@@ -35,6 +33,7 @@ export default function Login() {
     if (Object.keys(next).length) return;
     setLoading(true);
     try {
+      // The chosen portal is a UI hint only. The backend must decide what this account may access.
       await authService.signIn({ email: email.trim(), password });
     } catch (e) {
       setNotice(e instanceof NotConnectedError ? 'not-connected' : 'failed');
@@ -47,11 +46,10 @@ export default function Login() {
     <Screen padBottom>
       <View style={{ paddingHorizontal: space.xl, paddingTop: space.x3, gap: space.x3 }}>
         <AuthBrand />
+        <SelectedPortal portal={portal} caption="Signing in to" onChange={() => router.dismissTo('/portal')} />
         <View style={{ gap: space.md }}>
           <AppText variant="display">Your records, kept in order.</AppText>
-          <AppText variant="bodyLarge" tone="soft">
-            Store ownership documents, keep track of what you own, and share access only for as long as you intend.
-          </AppText>
+          <AppText variant="bodyLarge" tone="soft">{portal.signInIntro}</AppText>
         </View>
 
         {notice === 'not-connected' ? (
@@ -71,13 +69,17 @@ export default function Login() {
 
         <View style={{ gap: space.sm }}>
           <Button title="Sign in" onPress={submit} loading={loading} />
-          <Button title="Create an account" variant="quiet" onPress={() => router.push('/signup')} />
+          <Button title="Create an account" variant="quiet" onPress={() => router.push({ pathname: '/signup', params: { portal: portal.id } })} />
         </View>
 
         <View style={{ borderTopWidth: 1, borderTopColor: colors.rule, paddingTop: space.xl, gap: space.md }}>
-          <AppText variant="small" tone="muted">This is a preview build. Review the screens with fictional data. No account is created and nothing leaves your device.</AppText>
+          <AppText variant="small" tone="muted">
+            {portalId === 'personal'
+              ? 'This is a preview build. Review the screens with fictional data. No account is created and nothing leaves your device.'
+              : `The ${portal.title} screens aren’t part of this build yet. You can still review the Personal Vault with fictional data. No account is created and nothing leaves your device.`}
+          </AppText>
           <Button
-            title="Explore with sample data"
+            title={portalId === 'personal' ? 'Explore with sample data' : 'Review the Personal Vault sample'}
             variant="secondary"
             icon="eye"
             onPress={() => { enterPreview(); router.replace('/'); }}

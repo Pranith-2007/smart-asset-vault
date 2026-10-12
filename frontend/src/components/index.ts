@@ -1,4 +1,5 @@
 export * from './AppText';
+export * from './AuthBrand';
 export * from './Avatar';
 export * from './Button';
 export * from './Choice';
@@ -16,3 +17,4 @@ export * from './Toast';
 export * from './ToggleRow';
 export * from './SearchField';
 export * from './NotFoundState';
+export * from './PortalCard';
