@@ -18,3 +18,5 @@ export * from './ToggleRow';
 export * from './SearchField';
 export * from './NotFoundState';
 export * from './PortalCard';
+export * from './DocumentCard';
+export * from './PlainSection';
