@@ -20,11 +20,15 @@ export default function TabsLayout() {
         sceneStyle: { backgroundColor: colors.paper },
       }}
     >
-      <Tabs.Screen name="index" options={tab('Overview', 'shield')} />
-      <Tabs.Screen name="assets" options={tab('Assets', 'layers')} />
-      <Tabs.Screen name="vault" options={tab('Vault', 'archive')} />
-      <Tabs.Screen name="access" options={tab('Access', 'key')} />
-      <Tabs.Screen name="profile" options={tab('Profile', 'user')} />
+      
+      <Tabs.Screen name="index" options={tab('Home', 'home')} />
+      <Tabs.Screen name="documents" options={tab('Documents', 'folder')} />
+      <Tabs.Screen name="access" options={tab('Shares', 'share-2')} />
+     <Tabs.Screen name="profile" options={{ href: null }} />
+
+      <Tabs.Screen name="vault" options={{ href: null }} />
+      <Tabs.Screen name="assets" options={{ href: null }} />
+
     </Tabs>
   );
 }
