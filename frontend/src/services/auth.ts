@@ -50,9 +50,7 @@ export const supabaseAuthService: AuthService = {
   },
 
 async signUp({ fullName, email, password }) {
-  const redirectUrl = Linking.createURL('callback', {
-    scheme: 'assetvault',
-  });
+const redirectUrl = Linking.createURL('callback');
 
   console.log('Email verification redirect:', redirectUrl);
 
