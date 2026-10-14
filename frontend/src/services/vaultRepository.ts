@@ -27,6 +27,7 @@ export interface VaultRepository {
   registerAsset(input: NewAsset): Promise<Mutation<Asset>>;
   addDocument(input: NewDocument): Promise<Mutation<VaultDocument>>;
   createShare(input: NewShare): Promise<Mutation<Share>>;
+  deleteDocument(id: string): Promise<void>;
   updateShare(id: string, patch: SharePatch): Promise<Mutation<Share>>;
   revokeShare(id: string): Promise<Mutation<Share>>;
 }

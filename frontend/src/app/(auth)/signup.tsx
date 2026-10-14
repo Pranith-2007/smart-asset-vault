@@ -37,6 +37,7 @@ const [loading, setLoading] = useState(false);
 const [notice, setNotice] = useState<
   'not-connected' | 'failed' | 'confirmation' | null
 >(null);
+const [signupError, setSignupError] = useState<string | null>(null);
 
 const score = passwordScore(password);
 
@@ -81,6 +82,7 @@ if (Object.values(errors).some(Boolean)) {
 }
 
 setLoading(true);
+console.log('SIGNUP BUTTON HANDLER REACHED');
 
 try {
   const result = await authService.signUp({
@@ -98,8 +100,12 @@ try {
   if (e instanceof NotConnectedError) {
     setNotice('not-connected');
   } else {
-    setNotice('failed');
     console.error('Sign-up failed:', e);
+    console.log('SIGNUP ERROR:', e);
+    setNotice('failed');
+    setSignupError(
+      e instanceof Error ? e.message : String(e)
+    );
   }
 } finally {
   setLoading(false);

@@ -1,4 +1,6 @@
-import { Image, StyleSheet, View } from 'react-native';
+import { Alert, Image, Platform, StyleSheet, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { AppText, Banner, Button, Entry, Icon, KeyValue, Register, Screen, ScreenHeader, SectionHeader, useDetailGuard } from '@/components';
 import { accessLabel, categoryMeta, kindMeta } from '@/domain/labels';
@@ -24,29 +26,166 @@ function PagePlaceholder({ certified }: { certified: boolean }) {
   );
 }
 
+function PdfPreview({ uri }: { uri: string }) {
+  if (Platform.OS === 'web') {
+    return (
+      <iframe
+        src={uri}
+        title="PDF document preview"
+        style={{
+          width: '100%',
+          height: '70vh',
+          border: 'none',
+          background: '#fff',
+        }}
+      />
+    );
+  }
+
+  return null;
+}
+
+
 export default function DocumentPreview() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const back = useBack();
   const vault = useVault();
   const doc = vault.documents.find((d) => d.id === id);
+
+  const [deleting, setDeleting] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageError, setImageError] = useState(false);
+
   const guard = useDetailGuard('Document', !!doc, 'document');
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadPreview() {
+      setImageUrl(null);
+      setImageError(false);
+
+      if (
+        !doc ||
+        (!doc.mimeType.startsWith('image/') &&
+          doc.mimeType !== 'application/pdf')
+      ) {
+        return;
+      }
+
+      const { data: metadata, error: metadataError } = await supabase
+        .from('documents')
+        .select('storage_path')
+        .eq('id', doc.id)
+        .single();
+
+      if (metadataError || !metadata?.storage_path) {
+        if (!cancelled) setImageError(true);
+        return;
+      }
+
+      const { data, error } = await supabase.storage
+        .from('documents')
+        .createSignedUrl(metadata.storage_path, 300);
+
+      if (cancelled) return;
+
+      if (error || !data?.signedUrl) {
+        setImageError(true);
+        return;
+      }
+
+      setImageUrl(data.signedUrl);
+    }
+
+    void loadPreview();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [doc?.id, doc?.mimeType]);
+
+ 
+const performDelete = async () => {
+  if (!doc) return;
+
+  try {
+    setDeleting(true);
+    await vault.deleteDocument(doc.id);
+    router.replace('/(app)/(tabs)/documents');
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : 'Please try again.';
+
+    if (Platform.OS === 'web') {
+      window.alert(`Delete failed: ${message}`);
+    } else {
+      Alert.alert('Delete failed', message);
+    }
+  } finally {
+    setDeleting(false);
+  }
+};
+
+const handleDelete = () => {
+  if (!doc || deleting) return;
+
+  if (Platform.OS === 'web') {
+    if (window.confirm('Permanently delete this document?')) {
+      void performDelete();
+    }
+    return;
+  }
+
+  Alert.alert(
+    'Delete document?',
+    'This permanently removes the document from your vault.',
+    [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => void performDelete(),
+      },
+    ],
+  );
+};
+
+
   if (guard || !doc) return guard;
 
   const asset = vault.assets.find((a) => a.id === doc.assetId);
   const active = sharesForDocument(vault, doc.id).filter(isActiveShare);
   const left = doc.expiresOn ? daysUntil(doc.expiresOn) : null;
-  const isImage = !!doc.localUri && doc.mimeType.startsWith('image/');
+  const isImage = doc.mimeType.startsWith('image/');
+
 
   return (
     <Screen
       header={<ScreenHeader title={doc.title} subtitle={`${kindMeta[doc.kind].label}, version ${doc.version}`} onBack={back} />}
       footer={
-        <>
-          <Button title="Share document" icon="send" onPress={() => router.push(`/document/${doc.id}/share`)} />
-          <Button title="Manage permissions" variant="quiet" compact onPress={() => router.push(`/document/${doc.id}/permissions`)} />
-        </>
-      }
+  <>
+    <Button
+      title="Share document"
+      icon="send"
+      onPress={() => router.push(`/document/${doc.id}/share`)}
+    />
+    <Button
+      title="Manage permissions"
+      variant="quiet"
+      compact
+      onPress={() => router.push(`/document/${doc.id}/permissions`)}
+    />
+    <Button
+      title={deleting ? 'Deleting...' : 'Delete document'}
+      icon="trash-2"
+      variant="quiet"
+      onPress={handleDelete}
+      disabled={deleting}
+    />
+  </>
+}
     >
       {left !== null && left < 0 ? (
         <View style={{ paddingHorizontal: space.xl, paddingBottom: space.lg }}>
@@ -59,7 +198,33 @@ export default function DocumentPreview() {
       ) : null}
 
       <View style={styles.stage}>
-        {isImage ? <Image source={{ uri: doc.localUri }} style={styles.image} resizeMode="contain" accessibilityLabel={`Preview of ${doc.title}`} /> : <PagePlaceholder certified={doc.certifiedCopy} />}
+  
+{isImage && imageUrl ? (
+  <Image
+    source={{ uri: imageUrl }}
+    style={styles.image}
+    resizeMode="contain"
+    accessibilityLabel={`Preview of ${doc.title}`}
+  />
+) : doc.mimeType === 'application/pdf' && imageUrl ? (
+  <PdfPreview uri={imageUrl} />
+) : (
+  <PagePlaceholder certified={doc.certifiedCopy} />
+)}
+
+
+{doc.mimeType === 'application/pdf' && imageUrl ? (
+  <Button
+    title="Open PDF"
+    icon="file-text"
+    onPress={() => {
+      void import('expo-web-browser').then(({ openBrowserAsync }) =>
+        openBrowserAsync(imageUrl)
+      );
+    }}
+  />
+) : null}
+
         <AppText variant="small" tone="muted" style={{ textAlign: 'center', paddingHorizontal: space.xl }}>
           {isImage
             ? 'Showing the image held on this device.'

@@ -65,6 +65,21 @@ export const mockVaultRepository: VaultRepository = {
     return done(document);
   },
 
+  async deleteDocument(id) {
+    await wait(700);
+    assertWritable();
+
+    const index = db.documents.findIndex(
+      (document) => document.id === id
+    );
+
+    if (index === -1) {
+      throw new Error('Document not found.');
+    }
+
+    db.documents.splice(index, 1);
+  },
+
   async createShare(input) {
     await wait(650);
     assertWritable();
