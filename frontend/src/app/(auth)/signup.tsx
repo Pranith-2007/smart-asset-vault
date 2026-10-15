@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { View } from 'react-native';
-import * as DocumentPicker from 'expo-document-picker';
 import {
   Redirect,
   useLocalSearchParams,
@@ -45,11 +44,6 @@ export default function Signup() {
   const [touched, setTouched] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const [aadhaarFile, setAadhaarFile] =
-    useState<DocumentPicker.DocumentPickerAsset | null>(null);
-
-  const [aadhaarError, setAadhaarError] = useState('');
-
   const [notice, setNotice] = useState<
     'not-connected' | 'failed' | 'confirmation' | null
   >(null);
@@ -80,42 +74,11 @@ export default function Signup() {
   const show_ = (key: keyof typeof errors) =>
     touched ? errors[key] : undefined;
 
-  const chooseAadhaar = async () => {
-    setAadhaarError('');
+  if (!portalId) {
+    return <Redirect href="/portal" />;
+  }
 
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: [
-          'image/jpeg',
-          'image/png',
-          'application/pdf',
-        ],
-        copyToCacheDirectory: true,
-        multiple: false,
-      });
-
-      if (result.canceled) {
-        return;
-      }
-
-      const file = result.assets[0];
-
-      if (
-        file.size !== undefined &&
-        file.size > 5 * 1024 * 1024
-      ) {
-        setAadhaarError('File must be smaller than 5 MB.');
-        return;
-      }
-
-      setAadhaarFile(file);
-    } catch (error) {
-      console.error('Document picker error:', error);
-      setAadhaarError(
-        'Could not open the file picker. Please try again.',
-      );
-    }
-  };
+  const portal = portals[portalId];
 
   const submit = async () => {
     setTouched(true);
@@ -156,12 +119,6 @@ export default function Signup() {
     }
   };
 
-  if (!portalId) {
-    return <Redirect href="/portal" />;
-  }
-
-  const portal = portals[portalId];
-
   return (
     <Screen
       header={
@@ -193,8 +150,8 @@ export default function Signup() {
         ) : null}
 
         <AppText tone="soft">
-          Create your account and optionally select an identity
-          document for the planned verification feature.
+          Create your account to access your personal
+          document vault.
         </AppText>
 
         {notice === 'not-connected' ? (
@@ -329,138 +286,12 @@ export default function Signup() {
           />
         </View>
 
-        {/* Aadhaar document selection */}
-        <View
-          style={{
-            borderWidth: 1,
-            borderColor: colors.rule,
-            borderRadius: 16,
-            padding: space.lg,
-            gap: space.md,
-          }}
-        >
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 12,
-            }}
-          >
-            <Icon
-              name="check-circle"
-              size={26}
-              color={colors.patina}
-            />
-
-            <View style={{ flex: 1, gap: 4 }}>
-              <AppText variant="body">
-                Identity verification
-              </AppText>
-
-              <AppText
-                variant="small"
-                tone="muted"
-              >
-                Aadhaar document (optional)
-              </AppText>
-            </View>
-          </View>
-
-          <AppText
-            variant="small"
-            tone="soft"
-          >
-            Select a PDF, JPG or PNG file up to 5 MB.
-            This prototype only selects the file; it does
-            not upload or verify your document.
-          </AppText>
-
-          <View
-            style={{
-              borderWidth: 1,
-              borderColor: colors.rule,
-              borderStyle: 'dashed',
-              borderRadius: 12,
-              padding: space.lg,
-              alignItems: 'center',
-              gap: space.md,
-            }}
-          >
-            {aadhaarFile ? (
-              <>
-                <Icon
-                  name="check-circle"
-                  size={30}
-                  color={colors.patina}
-                />
-
-                <AppText>
-                  {aadhaarFile.name}
-                </AppText>
-
-                <AppText
-                  variant="small"
-                  tone="muted"
-                >
-                  {aadhaarFile.size !== undefined
-                    ? `${(
-                        aadhaarFile.size /
-                        (1024 * 1024)
-                      ).toFixed(2)} MB`
-                    : 'File selected'}
-                </AppText>
-
-                <Button
-                  title="Choose another document"
-                  variant="secondary"
-                  onPress={chooseAadhaar}
-                />
-
-                <Button
-                  title="Remove document"
-                  variant="quiet"
-                  onPress={() => {
-                    setAadhaarFile(null);
-                    setAadhaarError('');
-                  }}
-                />
-              </>
-            ) : (
-              <>
-                <AppText variant="body">
-                  No document selected
-                </AppText>
-
-                <Button
-                  title="Choose Aadhaar document"
-                  onPress={chooseAadhaar}
-                />
-              </>
-            )}
-          </View>
-
-          {aadhaarError ? (
-            <AppText tone="soft">
-              {aadhaarError}
-            </AppText>
-          ) : null}
-        </View>
-
         <Button
           title="Create account"
           onPress={submit}
           loading={loading}
           disabled={loading}
         />
-
-        <AppText
-          variant="small"
-          tone="muted"
-        >
-          Your selected document is not sent to the server
-          by this screen. Avoid using a real Aadhaar document
-          until secure storage and verification are implemented.
-        </AppText>
       </View>
     </Screen>
   );
