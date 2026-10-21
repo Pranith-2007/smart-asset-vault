@@ -1,3 +1,4 @@
+import { registerDocumentHash } from "./blockchainService";
 import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
 import { decode } from 'base64-arraybuffer';
@@ -188,9 +189,12 @@ if (Platform.OS === 'web') {
       });
 
     fail(uploadError);
+    
+    
+    let data: any;
 
     try {
-      const { data, error } = await supabase
+      const result = await supabase
         .from('documents')
         .insert({
           owner_id: user.id,
@@ -207,27 +211,77 @@ if (Platform.OS === 'web') {
         .select('*')
         .single();
 
-      fail(error);
+      fail(result.error);
 
-      if (!data) {
-        throw new RepositoryError('Document metadata was not returned after saving.');
+      if (!result.data) {
+        throw new RepositoryError(
+          'Document metadata was not returned after saving.'
+        );
       }
 
-      return {
-        snapshot: await snapshot(),
-        result: mapDocument(data),
-      };
+      data = result.data;
     } catch (error) {
       const { error: cleanupError } = await supabase.storage
         .from('documents')
         .remove([storagePath]);
 
       if (cleanupError) {
-        console.error('Could not remove uploaded file after metadata failure:', cleanupError);
+        console.error(
+          'Could not remove uploaded file after metadata failure:',
+          cleanupError
+        );
       }
 
       throw error;
     }
+
+    let blockchainRegistration;
+
+    try {
+      blockchainRegistration = await registerDocumentHash(fileBytes);
+    } catch (error) {
+      console.error('Blockchain registration failed:', error);
+
+      throw new RepositoryError(
+        'The document was uploaded, but blockchain registration failed. The file remains stored; check blockchain status before retrying.'
+      );
+    }
+    
+    
+    const { error: blockchainUpdateError } = await supabase
+      .from('documents')
+      .update({
+        blockchain_document_id: blockchainRegistration.documentId,
+        blockchain_content_hash: blockchainRegistration.contentHash,
+        blockchain_transaction_hash: blockchainRegistration.transactionHash,
+        blockchain_status: 'registered',
+      })
+      .eq('id', data.id)
+      .eq('owner_id', user.id);
+
+    if (blockchainUpdateError) {
+      console.error(
+        'Blockchain succeeded, but saving its metadata failed:',
+        blockchainUpdateError
+      );
+
+      throw new RepositoryError(
+        'Blockchain registration succeeded, but its details could not be saved. Do not retry registration until the transaction is checked.'
+      );
+    }
+
+    console.log('Blockchain registration successful:', {
+      documentId: blockchainRegistration.documentId,
+      contentHash: blockchainRegistration.contentHash,
+      transactionHash: blockchainRegistration.transactionHash,
+      blockNumber: blockchainRegistration.blockNumber,
+      network: blockchainRegistration.network,
+    });
+
+    return {
+      snapshot: await snapshot(),
+      result: mapDocument(data),
+    };
   },
 
 async deleteDocument(id: string): Promise<void> {
