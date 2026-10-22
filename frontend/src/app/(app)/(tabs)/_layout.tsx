@@ -34,6 +34,7 @@ export default function TabsLayout() {
     >
       <Tabs.Screen name="home" options={tab('Home', 'home')} />
       <Tabs.Screen name="documents" options={tab('Documents', 'folder')} />
+      <Tabs.Screen name="verify" options={tab('Verify', 'shield')} />
       <Tabs.Screen name="access" options={tab('Shares', 'share-2')} />
       <Tabs.Screen name="profile" options={{ href: null }} />
       <Tabs.Screen name="vault" options={{ href: null }} />

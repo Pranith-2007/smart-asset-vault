@@ -83,4 +83,24 @@ describe("SmartAssetVault", async () => {
       ])
     );
   });
+    it("finds a registered document by its content hash", async () => {
+    const vault = await deployVault();
+
+    await vault.write.registerDocument([documentId, contentHash]);
+
+    const result = await vault.read.findDocumentByHash([contentHash]);
+
+    assert.equal(result[0], documentId);
+    assert.equal(result[1], true);
+  });
+
+  it("returns false for an unregistered content hash", async () => {
+    const vault = await deployVault();
+
+    const unknownHash = keccak256(toBytes("unknown-document"));
+
+    const result = await vault.read.findDocumentByHash([unknownHash]);
+
+    assert.equal(result[1], false);
+  });
 });

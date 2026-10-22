@@ -15,6 +15,7 @@ contract SmartAssetVault {
     }
 
     mapping(bytes32 => Document) public documents;
+    mapping(bytes32 => bytes32) public documentIdByHash;
     mapping(bytes32 => mapping(address => Share)) public shares;
 
     event DocumentRegistered(
@@ -53,6 +54,7 @@ contract SmartAssetVault {
             contentHash: contentHash,
             exists: true
         });
+        documentIdByHash[contentHash] = documentId;
 
         emit DocumentRegistered(documentId, msg.sender, contentHash);
     }
@@ -106,4 +108,10 @@ contract SmartAssetVault {
         Document storage doc = documents[documentId];
         return (doc.owner, doc.contentHash, doc.exists);
     }
+    function findDocumentByHash(
+    bytes32 contentHash
+) external view returns (bytes32 documentId, bool exists) {
+    documentId = documentIdByHash[contentHash];
+    exists = documents[documentId].exists;
+}
 }

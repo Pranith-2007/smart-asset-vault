@@ -1,3 +1,4 @@
+import { verifyStoredDocument } from '@/services/blockchainService';
 import { Alert, Image, Platform, StyleSheet, View } from 'react-native';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
@@ -52,7 +53,13 @@ export default function DocumentPreview() {
   const back = useBack();
   const vault = useVault();
   const doc = vault.documents.find((d) => d.id === id);
-
+  const [verifying, setVerifying] = useState(false);
+const [verificationResult, setVerificationResult] = useState<{
+  status: 'verified' | 'mismatch' | 'not_registered';
+  actualHash?: string;
+  registeredHash?: string;
+} | null>(null);
+const [verificationError, setVerificationError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageError, setImageError] = useState(false);
@@ -106,7 +113,64 @@ export default function DocumentPreview() {
     };
   }, [doc?.id, doc?.mimeType]);
 
- 
+ const handleVerifyIntegrity = async () => {
+  if (!doc || verifying) return;
+
+  setVerifying(true);
+  setVerificationResult(null);
+  setVerificationError(null);
+
+  try {
+    const { data: metadata, error } = await supabase
+      .from('documents')
+      .select('storage_path, blockchain_document_id')
+      .eq('id', doc.id)
+      .single();
+
+    if (error || !metadata?.storage_path) {
+      throw new Error('Could not find the stored document.');
+    }
+
+    if (!metadata.blockchain_document_id) {
+      setVerificationResult({
+        status: 'not_registered',
+      });
+      return;
+    }
+
+    const result = await verifyStoredDocument(
+      metadata.blockchain_document_id,
+      metadata.storage_path
+    );
+
+    if (result.status === 'error') {
+  throw new Error('The verification service could not verify this document.');
+}
+
+if (
+  result.status === 'verified' ||
+  result.status === 'mismatch' ||
+  result.status === 'not_registered'
+) {
+  setVerificationResult({
+  status: result.status,
+  actualHash: result.actualHash,
+  registeredHash: result.registeredHash,
+});
+} else {
+  throw new Error('The verification service returned an unexpected result.');
+}
+  } catch (error) {
+    setVerificationError(
+      error instanceof Error
+        ? error.message
+        : 'Unable to verify document integrity.'
+    );
+  } finally {
+    setVerifying(false);
+  }
+};
+
 const performDelete = async () => {
   if (!doc) return;
 
@@ -233,6 +297,52 @@ const handleDelete = () => {
               : 'Sample page. Real document preview arrives with storage.'}
         </AppText>
       </View>
+      <SectionHeader title="Blockchain integrity" />
+
+<View style={{ paddingHorizontal: space.xl, paddingBottom: space.lg, gap: space.md }}>
+  <AppText variant="small" tone="muted">
+    Compare this file with the version registered on Ethereum Sepolia.
+  </AppText>
+
+  <Button
+    title={verifying ? 'Verifying...' : 'Verify Integrity'}
+    icon="shield"
+    onPress={() => void handleVerifyIntegrity()}
+    disabled={verifying}
+  />
+
+  {verificationResult?.status === 'verified' ? (
+    <Banner
+      tone="good"
+      title="Integrity Verified"
+      body="The file matches the content hash registered on the blockchain."
+    />
+  ) : null}
+
+  {verificationResult?.status === 'mismatch' ? (
+    <Banner
+      tone="bad"
+      title="Integrity Mismatch"
+      body="This file differs from the version registered on the blockchain."
+    />
+  ) : null}
+
+  {verificationResult?.status === 'not_registered' ? (
+    <Banner
+      tone="warn"
+      title="Not Registered"
+      body="No blockchain record was found for this document."
+    />
+  ) : null}
+
+  {verificationError ? (
+    <Banner
+      tone="bad"
+      title="Verification Error"
+      body={verificationError}
+    />
+  ) : null}
+</View>
 
       <SectionHeader title="Details" />
       <Register>

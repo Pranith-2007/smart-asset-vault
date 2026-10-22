@@ -61,3 +61,99 @@ export async function verifyDocumentHash(
 
   return response.json();
 }
+
+
+export type IntegrityVerification = {
+  status: "verified" | "mismatch" | "not_registered" | "error";
+  documentId: string;
+  actualHash?: string;
+  registeredHash?: string;
+  owner?: string;
+  valid: boolean;
+  network?: string;
+};
+
+export async function verifyStoredDocument(
+  documentId: string,
+  storagePath: string
+): Promise<IntegrityVerification> {
+  const {
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession();
+
+  if (sessionError || !session?.access_token) {
+    throw new Error("Please sign in before verifying a document.");
+  }
+
+  // Download the real file using the signed-in user's Supabase access.
+  const { data: file, error: downloadError } =
+    await supabase.storage.from("documents").download(storagePath);
+
+  if (downloadError || !file) {
+    throw new Error("Could not download the document for verification.");
+  }
+
+  const fileBytes = await file.arrayBuffer();
+
+  const response = await fetch(
+    `${BLOCKCHAIN_API_URL}/verify-document/${documentId}`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        "Content-Type": "application/octet-stream",
+      },
+      body: fileBytes,
+    }
+  );
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.error || "Document verification failed.");
+  }
+
+  return result as IntegrityVerification;
+}
+
+
+export type VerifyAnyDocumentResult = {
+  network: string;
+  contentHash: string;
+  documentId: string | null;
+  status: "match_found" | "no_match";
+  valid: boolean;
+};
+
+export async function verifyAnyDocument(
+  fileUri: string
+): Promise<VerifyAnyDocumentResult> {
+  const response = await fetch(fileUri);
+  if (!response.ok) {
+    throw new Error("Could not read the selected file.");
+  }
+
+  const fileBytes = await response.arrayBuffer();
+
+  const apiResponse = await fetch(
+    `${BLOCKCHAIN_API_URL}/verify-any-document`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/octet-stream",
+      },
+      body: fileBytes,
+    }
+  );
+
+  const result = await apiResponse.json();
+
+  if (!apiResponse.ok) {
+    throw new Error(
+      result.error || "Blockchain verification request failed."
+    );
+  }
+
+  return result as VerifyAnyDocumentResult;
+}

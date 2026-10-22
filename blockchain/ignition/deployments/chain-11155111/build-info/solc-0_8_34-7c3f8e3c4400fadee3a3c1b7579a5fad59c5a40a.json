@@ -1,0 +1,49 @@
+{
+  "_format": "hh3-sol-build-info-1",
+  "id": "solc-0_8_34-7c3f8e3c4400fadee3a3c1b7579a5fad59c5a40a",
+  "solcVersion": "0.8.34",
+  "solcLongVersion": "0.8.34+commit.80d5c536",
+  "compilerType": "solc",
+  "toolVersions": {
+    "hardhat": "3.20.0"
+  },
+  "userSourceNameMap": {
+    "contracts/SmartAssetVault.sol": "project/contracts/SmartAssetVault.sol"
+  },
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "evmVersion": "osaka",
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "evm.bytecode.linkReferences",
+            "evm.bytecode.object",
+            "evm.bytecode.opcodes",
+            "evm.bytecode.sourceMap",
+            "evm.deployedBytecode.immutableReferences",
+            "evm.deployedBytecode.linkReferences",
+            "evm.deployedBytecode.object",
+            "evm.deployedBytecode.opcodes",
+            "evm.deployedBytecode.sourceMap",
+            "evm.methodIdentifiers"
+          ]
+        }
+      },
+      "remappings": []
+    },
+    "sources": {
+      "project/contracts/SmartAssetVault.sol": {
+        "content": "\r\n // SPDX-License-Identifier: MIT\r\npragma solidity ^0.8.28;\r\n\r\ncontract SmartAssetVault {\r\n    struct Document {\r\n        address owner;\r\n        bytes32 contentHash;\r\n        bool exists;\r\n    }\r\n\r\n    struct Share {\r\n        address grantedBy;\r\n        bool active;\r\n    }\r\n\r\n    mapping(bytes32 => Document) public documents;\r\n    mapping(bytes32 => bytes32) public documentIdByHash;\r\n    mapping(bytes32 => mapping(address => Share)) public shares;\r\n\r\n    event DocumentRegistered(\r\n        bytes32 indexed documentId,\r\n        address indexed owner,\r\n        bytes32 contentHash\r\n    );\r\n\r\n    event ShareUpdated(\r\n        bytes32 indexed documentId,\r\n        address indexed recipient,\r\n        address indexed owner,\r\n        bool active\r\n    );\r\n\r\n    error InvalidDocumentId();\r\n    error InvalidContentHash();\r\n    error DocumentAlreadyRegistered();\r\n    error DocumentNotFound();\r\n    error NotDocumentOwner();\r\n    error InvalidRecipient();\r\n    error OwnerCannotShareWithSelf();\r\n\r\n    function registerDocument(\r\n        bytes32 documentId,\r\n        bytes32 contentHash\r\n    ) external {\r\n        if (documentId == bytes32(0)) revert InvalidDocumentId();\r\n        if (contentHash == bytes32(0)) revert InvalidContentHash();\r\n        if (documents[documentId].exists) {\r\n            revert DocumentAlreadyRegistered();\r\n        }\r\n\r\n        documents[documentId] = Document({\r\n            owner: msg.sender,\r\n            contentHash: contentHash,\r\n            exists: true\r\n        });\r\n        documentIdByHash[contentHash] = documentId;\r\n\r\n        emit DocumentRegistered(documentId, msg.sender, contentHash);\r\n    }\r\n\r\n    function verifyDocument(\r\n        bytes32 documentId,\r\n        bytes32 contentHash\r\n    ) external view returns (bool) {\r\n        Document storage doc = documents[documentId];\r\n\r\n        return doc.exists && doc.contentHash == contentHash;\r\n    }\r\n\r\n    function setShare(\r\n        bytes32 documentId,\r\n        address recipient,\r\n        bool active\r\n    ) external {\r\n        Document storage doc = documents[documentId];\r\n\r\n        if (!doc.exists) revert DocumentNotFound();\r\n        if (doc.owner != msg.sender) revert NotDocumentOwner();\r\n        if (recipient == address(0)) revert InvalidRecipient();\r\n        if (recipient == msg.sender) revert OwnerCannotShareWithSelf();\r\n\r\n        shares[documentId][recipient] = Share({\r\n            grantedBy: msg.sender,\r\n            active: active\r\n        });\r\n\r\n        emit ShareUpdated(documentId, recipient, msg.sender, active);\r\n    }\r\n\r\n    function canAccess(\r\n        bytes32 documentId,\r\n        address recipient\r\n    ) external view returns (bool) {\r\n        Document storage doc = documents[documentId];\r\n\r\n        return doc.exists &&\r\n            (recipient == doc.owner || shares[documentId][recipient].active);\r\n    }\r\n\r\n    function getDocument(\r\n        bytes32 documentId\r\n    ) external view returns (\r\n        address owner,\r\n        bytes32 contentHash,\r\n        bool exists\r\n    ) {\r\n        Document storage doc = documents[documentId];\r\n        return (doc.owner, doc.contentHash, doc.exists);\r\n    }\r\n    function findDocumentByHash(\r\n    bytes32 contentHash\r\n) external view returns (bytes32 documentId, bool exists) {\r\n    documentId = documentIdByHash[contentHash];\r\n    exists = documents[documentId].exists;\r\n}\r\n}\r\n"
+      }
+    }
+  }
+}

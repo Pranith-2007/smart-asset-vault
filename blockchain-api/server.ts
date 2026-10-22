@@ -65,7 +65,7 @@ const app = express();
 const PORT = Number(process.env.PORT) || 3001;
 
 const contractAddress = getAddress(
-  "0xedc18a1674a9959a7658442b56a889ab7b6a1958"
+  "0xb9fB2D8A2efB070696907fd94F63df9e49db3327"
 );
 
 const artifactPath = resolve(
@@ -73,7 +73,9 @@ const artifactPath = resolve(
   "../blockchain/artifacts/contracts/SmartAssetVault.sol/SmartAssetVault.json"
 );
 
-const artifact = JSON.parse(readFileSync(artifactPath, "utf8"));
+const artifact: {
+  abi: readonly unknown[];
+} = JSON.parse(readFileSync(artifactPath, "utf8"));
 
 const publicClient = createPublicClient({
   chain: sepolia,
@@ -128,8 +130,15 @@ app.get("/contract", async (_req, res) => {
       contractAddress,
       deployed: Boolean(code && code !== "0x"),
       abiFunctions: artifact.abi
-        .filter((item: { type: string }) => item.type === "function")
-        .map((item: { name?: string }) => item.name),
+       .filter(
+  (item): item is { type: string; name?: string } =>
+    typeof item === "object" &&
+    item !== null &&
+    "type" in item &&
+    typeof item.type === "string" &&
+    item.type === "function"
+)
+.map((item) => item.name),
     });
   } catch (error) {
     console.error("Contract check failed:", error);
@@ -173,6 +182,58 @@ app.get("/verify/:documentId/:contentHash", async (req, res) => {
     });
   }
 });
+
+
+app.post(
+  "/verify-any-document",
+  express.raw({
+    type: "application/octet-stream",
+    limit: "25mb",
+  }),
+  async (req: Request, res: Response) => {
+    try {
+      if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+        res.status(400).json({
+          status: "error",
+          error: "Upload a non-empty document to verify.",
+        });
+        return;
+      }
+
+      // Calculate SHA-256 from the actual uploaded bytes.
+      const contentHash = `0x${createHash("sha256")
+        .update(req.body)
+        .digest("hex")}` as `0x${string}`;
+
+      // Find a matching record on the new Sepolia contract.
+      const result = await publicClient.readContract({
+        address: contractAddress,
+        abi: artifact.abi,
+        functionName: "findDocumentByHash",
+        args: [contentHash],
+      });
+
+      const [documentId, exists] = result as [
+        `0x${string}`,
+        boolean
+      ];
+
+      res.json({
+        network: "sepolia",
+        contentHash,
+        documentId: exists ? documentId : null,
+        status: exists ? "match_found" : "no_match",
+        valid: exists,
+      });
+    } catch (error) {
+      console.error("Verify-any-document failed:", error);
+      res.status(500).json({
+        status: "error",
+        error: "Could not verify the document against the blockchain.",
+      });
+    }
+  }
+);
 
 
 app.get("/hash-test", async (_req, res) => {
@@ -219,7 +280,7 @@ app.post("/register-test-document",requireSupabaseUser, async (_req, res) => {
       args: [documentId],
     });
 
-    if (existing[2]) {
+    if ((existing as [string, string, boolean])[2]) {
       res.status(409).json({
         error: "This test document is already registered.",
         documentId,
@@ -305,6 +366,88 @@ app.post(
       console.error("Document registration failed:", error);
       res.status(500).json({
         error: "Document registration failed.",
+      });
+    }
+  }
+);
+
+
+app.post(
+  "/verify-document/:documentId",
+  requireSupabaseUser,
+  express.raw({
+    type: "application/octet-stream",
+    limit: "25mb",
+  }),
+  async (req: Request, res: Response) => {
+    try {
+      const documentId = req.params.documentId;
+
+if (
+  typeof documentId !== "string" ||
+  !/^0x[a-fA-F0-9]{64}$/.test(documentId)
+) {
+        return res.status(400).json({
+          error: "Invalid document ID.",
+        });
+      }
+
+      if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+        return res.status(400).json({
+          error: "No file data received.",
+        });
+      }
+
+      // Hash the actual file bytes received from the frontend.
+      const actualHash =
+        "0x" +
+        createHash("sha256").update(req.body).digest("hex");
+
+      // Read the trusted record directly from Sepolia.
+      const record: unknown = await publicClient.readContract({
+  address: contractAddress,
+  abi: artifact.abi,
+  functionName: "getDocument",
+  args: [documentId as `0x${string}`],
+});
+
+if (!Array.isArray(record) || record.length !== 3) {
+  throw new Error("Unexpected blockchain document record.");
+}
+
+const [owner, registeredHash, exists] = record as [
+  `0x${string}`,
+  `0x${string}`,
+  boolean
+];
+
+      if (!exists) {
+        return res.json({
+          status: "not_registered",
+          documentId,
+          actualHash,
+          valid: false,
+        });
+      }
+
+      const valid =
+        actualHash.toLowerCase() === registeredHash.toLowerCase();
+
+      return res.json({
+        status: valid ? "verified" : "mismatch",
+        documentId,
+        actualHash,
+        registeredHash,
+        owner,
+        valid,
+        network: "sepolia",
+      });
+    } catch (error) {
+      console.error("Document integrity verification failed:", error);
+
+      return res.status(500).json({
+        status: "error",
+        error: "Unable to verify document integrity.",
       });
     }
   }
