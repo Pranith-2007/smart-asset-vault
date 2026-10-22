@@ -68,7 +68,7 @@ try {
   });
 
   // Supabase session is updated by the session provider.
-  router.replace('/');
+  router.replace('/home');
 } catch (e) {
   if (e instanceof NotConnectedError) {
     setNotice('not-connected');
@@ -199,7 +199,7 @@ gap: space.x3,
         icon="eye"
         onPress={() => {
           enterPreview();
-          router.replace('/');
+          router.replace('/home');
         }}
       />
     </View>

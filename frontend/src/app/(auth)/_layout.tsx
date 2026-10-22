@@ -8,8 +8,8 @@ export default function AuthLayout() {
   if (isLoading) return null;
 
   if (inPreview || isAuthenticated) {
-    return <Redirect href="/" />;
-  }
+  return <Redirect href="/home" />;
+}
 
   return (
     <Stack

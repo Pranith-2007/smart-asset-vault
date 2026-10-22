@@ -16,7 +16,6 @@ import {
   Avatar,
   Button,
   DocumentCard,
-  EmptyState,
   Entry,
   ErrorState,
   Icon,
@@ -73,7 +72,7 @@ export default function Home() {
     setRefreshing(false);
 
     if (!ok) {
-      toast.show('Couldn’t refresh. Try again.', 'error');
+      toast.show("Couldn't refresh. Try again.", 'error');
     }
   };
 
@@ -120,27 +119,6 @@ export default function Home() {
         <ErrorState
           body={vault.error ?? 'Check your connection and try again.'}
           onRetry={vault.reload}
-        />
-      </Screen>
-    );
-  }
-
-  if (vault.assets.length === 0 && vault.documents.length === 0) {
-    return (
-      <Screen header={greetingBlock} padBottom={false}>
-        <EmptyState
-          icon="folder"
-          title="You have no documents yet"
-          body="Add your first document, such as your Aadhaar card or passport, and keep everything in one safe place."
-          action={{
-            label: 'Add a document',
-            icon: 'upload',
-            onPress: () => router.push('/document/upload'),
-          }}
-          secondary={{
-            label: 'Register an asset',
-            onPress: () => router.push('/asset/new'),
-          }}
         />
       </Screen>
     );
