@@ -18,7 +18,7 @@ export function SecurityProvider({ children }: { children: ReactNode }) {
   const update = useCallback((p: Partial<SecuritySettings>) => setSettings((s) => ({ ...s, ...p })), []);
 
   const value = useMemo(() => {
-    const checks = computeChecks(settings, { assets, documents, shares, activity });
+    const checks = computeChecks(settings, { assets, documents, shares, receivedShares: [],activity });
     return { settings, update, checks, met: checks.filter((c) => c.met).length, total: checks.length };
   }, [settings, update, assets, documents, shares, activity]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

@@ -98,5 +98,21 @@ const activity: ActivityEvent[] = [
 ];
 
 // Deep copy every time, so writes to the working database can never alter the fixtures.
-export const seedSnapshot = (): VaultSnapshot => JSON.parse(JSON.stringify({ assets, documents, shares, activity }));
-export const emptySnapshot = (): VaultSnapshot => ({ assets: [], documents: [], shares: [], activity: [] });
+export const seedSnapshot = (): VaultSnapshot =>
+  JSON.parse(
+    JSON.stringify({
+      assets,
+      documents,
+      shares,
+      receivedShares: [],
+      activity,
+    }),
+  );
+
+export const emptySnapshot = (): VaultSnapshot => ({
+  assets: [],
+  documents: [],
+  shares: [],
+  receivedShares: [],
+  activity: [],
+});

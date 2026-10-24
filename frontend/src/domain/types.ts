@@ -63,10 +63,19 @@ export interface ActivityEvent {
   shareId?: string;
 }
 
+export interface ReceivedShare extends Share {
+  documentTitle: string;
+  fileName: string;
+  senderId: string;
+  senderName?: string;
+  senderEmail?: string;
+}
+
 export interface VaultSnapshot {
   assets: Asset[];
   documents: VaultDocument[];
   shares: Share[];
+  receivedShares: ReceivedShare[];
   activity: ActivityEvent[];
 }
 

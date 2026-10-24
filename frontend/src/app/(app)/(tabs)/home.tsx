@@ -221,7 +221,44 @@ export default function Home() {
         />
       </ScrollView>
 
-      <PlainSection title="Needs attention" />
+      <PlainSection
+  title="Shared with me"
+  action={
+    (vault.receivedShares?.length ?? 0) > 0
+      ? {
+          label: 'See all',
+          onPress: () => router.push('/shared'),
+        }
+      : undefined
+  }
+/>
+
+{(vault.receivedShares?.length ?? 0) === 0 ? (
+  <View style={styles.sharedEmpty}>
+    <Icon name="inbox" size={22} color={colors.patina} />
+    <View style={styles.sharedEmptyText}>
+      <AppText>Nothing shared with you yet</AppText>
+      <AppText variant="small" tone="muted">
+        Documents shared with your account will appear here.
+      </AppText>
+    </View>
+  </View>
+) : (
+  <Register>
+    {vault.receivedShares.slice(0, 3).map((share) => (
+      <Entry
+        key={share.id}
+        icon="file-text"
+        title={share.documentTitle}
+        titleLines={2}
+        subtitle={`From ${share.senderName || share.senderEmail || 'Shared with you'}`}
+        onPress={() => router.push(`/shared/${share.id}`)}
+      />
+    ))}
+  </Register>
+)}
+
+<PlainSection title="Needs attention" />
 
       {attention.length === 0 ? (
         <View style={styles.allGood}>
@@ -360,4 +397,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.xl,
     fontSize: 16,
   },
+  sharedEmpty: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: space.md,
+  marginHorizontal: space.xl,
+  padding: space.lg,
+  borderRadius: 12,
+  backgroundColor: colors.patinaTint,
+},
+sharedEmptyText: {
+  flex: 1,
+  gap: 4,
+},
 });

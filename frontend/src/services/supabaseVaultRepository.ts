@@ -9,6 +9,7 @@ import type {
   NewAsset,
   NewDocument,
   NewShare,
+  ReceivedShare,
   Share,
   SharePatch,
   VaultDocument,
@@ -75,24 +76,142 @@ async function requireUser() {
   return data.user;
 }
 
+
 async function snapshot(): Promise<VaultSnapshot> {
   const user = await requireUser();
 
-  const [assetsResult, docsResult, sharesResult, eventsResult] = await Promise.all([
-    supabase.from('assets').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
-    supabase.from('documents').select('*').eq('owner_id', user.id).order('created_at', { ascending: false }),
-    supabase.from('document_shares').select('*').eq('owner_id', user.id).order('created_at', { ascending: false }),
-    supabase.from('access_events').select('*').eq('owner_id', user.id).order('created_at', { ascending: false }).limit(100),
+  const [
+    assetsResult,
+    docsResult,
+    sharesResult,
+    eventsResult,
+    receivedByIdResult,
+    receivedByEmailResult,
+  ] = await Promise.all([
+    supabase
+      .from('assets')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false }),
+
+    supabase
+      .from('documents')
+      .select('*')
+      .eq('owner_id', user.id)
+      .order('created_at', { ascending: false }),
+
+    // Shares created by the current user.
+    supabase
+      .from('document_shares')
+      .select('*')
+      .eq('owner_id', user.id)
+      .order('created_at', { ascending: false }),
+
+    supabase
+      .from('access_events')
+      .select('*')
+      .eq('owner_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(100),
+
+    // Incoming shares linked directly to the recipient account.
+    supabase
+      .from('document_shares')
+      .select('*')
+      .eq('recipient_id', user.id)
+      .is('revoked_at', null)
+      .order('created_at', { ascending: false }),
+
+    // Incoming shares addressed to the recipient's email.
+    user.email
+      ? supabase
+          .from('document_shares')
+          .select('*')
+          .ilike('recipient_email', user.email)
+          .is('revoked_at', null)
+          .order('created_at', { ascending: false })
+      : Promise.resolve({ data: [], error: null }),
   ]);
 
   fail(assetsResult.error);
   fail(docsResult.error);
   fail(sharesResult.error);
   fail(eventsResult.error);
+  fail(receivedByIdResult.error);
+  fail(receivedByEmailResult.error);
 
   const assets = (assetsResult.data ?? []).map(mapAsset);
   const documents = (docsResult.data ?? []).map(mapDocument);
   const shares = (sharesResult.data ?? []).map(mapShare);
+
+  // Merge the two recipient queries without duplicating a share.
+  const incomingRows = new Map<string, any>();
+
+  for (const row of receivedByIdResult.data ?? []) {
+    incomingRows.set(row.id, row);
+  }
+
+  for (const row of receivedByEmailResult.data ?? []) {
+    incomingRows.set(row.id, row);
+  }
+
+const incoming = [...incomingRows.values()].filter(
+  (row) => row.revoked_at == null
+);
+  // Fetch only the document metadata needed for incoming shares.
+  const sharedDocumentIds = [
+    ...new Set(incoming.map((row) => row.document_id)),
+  ];
+
+  let sharedDocuments: any[] = [];
+
+  if (sharedDocumentIds.length > 0) {
+    const { data, error } = await supabase
+      .from('documents')
+      .select('id, name, file_name, owner_id')
+      .in('id', sharedDocumentIds);
+
+    fail(error);
+    sharedDocuments = data ?? [];
+  }
+
+  const sharedDocumentMap = new Map(
+    sharedDocuments.map((doc) => [doc.id, doc]),
+  );
+
+  const senderIds = [
+  ...new Set(incoming.map((row) => row.owner_id).filter(Boolean)),
+];
+
+let senderProfiles: any[] = [];
+
+if (senderIds.length > 0) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, display_name, email')
+    .in('id', senderIds);
+
+  fail(error);
+  senderProfiles = data ?? [];
+}
+
+const senderProfileMap = new Map(
+  senderProfiles.map((profile) => [profile.id, profile])
+);
+
+  const receivedShares: ReceivedShare[] = incoming.map((row) => {
+  const doc = sharedDocumentMap.get(row.document_id);
+  const sender = senderProfileMap.get(row.owner_id);
+
+  return {
+    ...mapShare(row),
+    documentTitle: doc?.name ?? 'Shared document',
+    fileName: doc?.file_name ?? 'document.pdf',
+    senderId: row.owner_id,
+    senderName: sender?.display_name ?? '',
+    senderEmail: sender?.email ?? '',
+  };
+});
 
   const assetNames = new Map(assets.map((a) => [a.id, a.name]));
   const docNames = new Map(documents.map((d) => [d.id, d.title]));
@@ -113,8 +232,15 @@ async function snapshot(): Promise<VaultSnapshot> {
     shareId: e.share_id ?? undefined,
   }));
 
-  return { assets, documents, shares, activity };
+  return {
+    assets,
+    documents,
+    shares,
+    receivedShares,
+    activity,
+  };
 }
+
 
 export const supabaseVaultRepository: VaultRepository = {
   async load() {
@@ -338,20 +464,53 @@ async deleteDocument(id: string): Promise<void> {
 },
 
 
-  async createShare(input: NewShare): Promise<Mutation<Share>> {
-    await requireUser();
-    const { data, error } = await supabase.rpc('grant_access', {
-      p_document_id: input.documentId,
-      p_recipient_email: input.recipientEmail,
-      p_permission: input.access,
-      p_expires_at: input.expiresOn,
-      p_recipient_name: input.recipientName || null,
-    });
+ async createShare(input: NewShare): Promise<Mutation<Share>> {
+  const { data, error } = await supabase.functions.invoke(
+    'personalized-share',
+    {
+      body: {
+        action: 'create',
+        documentId: input.documentId,
+        recipientName: input.recipientName,
+        recipientEmail: input.recipientEmail,
+        permission: input.access,
+        expiresAt: input.expiresOn,
+      },
+    },
+  );
 
-    fail(error);
-    if (!data) throw new RepositoryError('Share was not returned after saving.');
-    return { snapshot: await snapshot(), result: mapShare(data) };
-  },
+  if (error) {
+    throw new RepositoryError(
+      error.message || 'Could not create the personalized share.',
+    );
+  }
+
+  if (!data?.shareId) {
+    throw new RepositoryError(
+      data?.error || 'The server did not return a share ID.',
+    );
+  }
+
+  // Fetch the authoritative share record using the signed-in owner's session.
+  const { data: row, error: rowError } = await supabase
+    .from('document_shares')
+    .select('*')
+    .eq('id', data.shareId)
+    .single();
+
+  fail(rowError);
+
+  if (!row) {
+    throw new RepositoryError(
+      'The share was created, but its record could not be loaded.',
+    );
+  }
+
+  return {
+    snapshot: await snapshot(),
+    result: mapShare(row),
+  };
+},
 
   async updateShare(id: string, patch: SharePatch): Promise<Mutation<Share>> {
     await requireUser();

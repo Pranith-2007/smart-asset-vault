@@ -28,7 +28,10 @@
           "backgroundColor": "#E8EBE8"
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-sharing",
+      "react-native-blob-util",
+      "expo-asset"
     ]
   }
 }

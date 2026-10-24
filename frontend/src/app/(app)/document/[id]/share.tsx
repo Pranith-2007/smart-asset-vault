@@ -86,7 +86,11 @@ export default function ShareDocument() {
               {accessLabel[created.access]} to “{doc.title}”, {created.expiresOn ? `until ${formatDate(created.expiresOn)}` : 'with no expiry'}. You can change or revoke this at any time from the Access tab.
             </AppText>
           </View>
-          <Banner tone="info" title="Recorded in the preview only" body="No message was sent. Delivery to the recipient starts once the backend is connected." />
+          <Banner
+            tone="info"
+            title="Personalized copy created"
+            body={`A separate PDF copy was created for ${created.name}. They must sign in using the invited email address to access it. Your original document remains unchanged.`}
+          />
         </View>
       </Screen>
     );

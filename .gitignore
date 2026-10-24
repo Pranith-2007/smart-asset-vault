@@ -53,3 +53,28 @@ frontend/dist/
 frontend/web-build/
 frontend/expo-env.d.ts
 frontend/*.tsbuildinfo
+
+# Solidity / Hardhat generated outputs
+blockchain/artifacts/
+blockchain/cache/
+blockchain/typechain-types/
+blockchain/coverage/
+blockchain/node_modules/
+
+
+# Supabase local temporary files
+**/supabase/.temp/
+
+# General dependency folders
+**/node_modules/
+
+# Build outputs
+**/build/
+**/coverage/
+
+# Local editor settings
+.vscode/
+.idea/
+
+# Local OS files
+Thumbs.db
