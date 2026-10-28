@@ -60,7 +60,7 @@ export default function LandingPage({ onSignIn, onChoosePortal, demoUrl }: Props
   const pad = wide ? 64 : 20;
 
   // Realistic smartphone sizes, including the outer frame.
-  const phoneWidth = wide ? 180 : 150;
+  const phoneWidth = wide ? 230 : 190;
 
   const Btn = ({
     label,
