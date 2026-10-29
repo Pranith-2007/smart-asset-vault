@@ -1,0 +1,715 @@
+﻿
+import React, { useRef } from 'react';
+import { useFonts } from 'expo-font';
+import {
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
+  Inter_800ExtraBold,
+} from '@expo-google-fonts/inter';
+import {
+  RobotoMono_400Regular,
+  RobotoMono_500Medium,
+  RobotoMono_600SemiBold,
+  RobotoMono_700Bold,
+} from '@expo-google-fonts/roboto-mono';
+import {
+  Image,
+  Linking,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { featureScreenshots, heroScreenshot } from '../data/landingScreenshots';
+import { C, gradient, shadow } from './theme';
+import Reveal from './Reveal';
+
+const REPO_URL = 'https://github.com/Pranith-2007/smart-asset-vault';
+type Section = 'home' | 'features' | 'showcase' | 'how' | 'about' | 'contact';
+
+interface Props {
+  onSignIn: () => void;
+  onChoosePortal: () => void;
+  demoUrl?: string;
+}
+
+const FEATURES = [
+  { icon: 'lock-closed-outline', title: 'Secure Storage', text: 'Keep every important document safely in one place.' },
+  { icon: 'shield-checkmark-outline', title: 'Blockchain Verification', text: 'Prove a document has not been altered.' },
+  { icon: 'share-social-outline', title: 'Controlled Sharing', text: 'Share only what is needed, with the right people.' },
+  { icon: 'people-outline', title: 'Role-Based Access', text: 'Each portal sees only what its role allows.' },
+] as const;
+
+const STEPS = [
+  { icon: 'cloud-upload-outline', t: 'Upload', d: 'Add a document from your phone.' },
+  { icon: 'lock-closed-outline', t: 'Secure', d: 'It is stored with protected access.' },
+  { icon: 'checkmark-done-outline', t: 'Verify', d: 'Its fingerprint is recorded on the blockchain.' },
+  { icon: 'paper-plane-outline', t: 'Share', d: 'Give access to specific people, on your terms.' },
+] as const;
+
+export default function LandingPage({ onSignIn, onChoosePortal, demoUrl }: Props) {
+  useFonts({
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+    Inter_800ExtraBold,
+    RobotoMono_400Regular,
+    RobotoMono_500Medium,
+    RobotoMono_600SemiBold,
+    RobotoMono_700Bold,
+  });
+  const { width } = useWindowDimensions();
+  const wide = width >= 900;
+  const scroller = useRef<ScrollView>(null);
+  const ys = useRef<Partial<Record<Section, number>>>({});
+
+  const mark = (k: Section) => ({
+    onLayout: (e: any) => {
+      ys.current[k] = e.nativeEvent.layout.y;
+    },
+  });
+
+  const go = (k: Section) =>
+    scroller.current?.scrollTo({
+      y: Math.max((ys.current[k] ?? 0) - 8, 0),
+      animated: true,
+    });
+
+  const watchDemo = () => (demoUrl ? Linking.openURL(demoUrl) : go('showcase'));
+  const pad = wide ? 64 : 20;
+
+  // Realistic smartphone sizes, including the outer frame.
+  const phoneWidth = wide ? 230 : 190;
+
+  const Btn = ({
+    label,
+    onPress,
+    primary,
+    icon,
+  }: {
+    label: string;
+    onPress: () => void;
+    primary?: boolean;
+    icon?: any;
+  }) => (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={(s: any) => [
+        st.btn,
+        primary ? st.btnP : st.btnS,
+        (s.hovered || s.pressed) && {
+          opacity: 0.88,
+          transform: [{ translateY: -1 }],
+        },
+      ]}
+    >
+      {icon && (
+        <Ionicons
+          name={icon}
+          size={18}
+          color={primary ? '#102B25' : C.forest}
+        />
+      )}
+      <Text style={[st.btnT, { color: primary ? '#102B25' : C.forest }]}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+
+  
+
+const Phone = ({
+  img,
+  alt,
+  placeholder,
+  w,
+}: {
+  img: any;
+  alt: string;
+  placeholder: boolean;
+  w: number;
+}) => (
+  <View
+    style={[
+      st.phone,
+      shadow,
+      {
+        width: w,
+        height: w * 1.9,
+        flexShrink: 0,
+      },
+    ]}
+  >
+    <Image
+      source={img}
+      accessibilityLabel={placeholder ? `Placeholder image: ${alt}` : alt}
+      style={{
+        width: '100%',
+        height: '100%',
+      }}
+      resizeMode="contain"
+    />
+    {placeholder && (
+      <View style={st.badge}>
+        <Text style={st.badgeT}>Placeholder</Text>
+      </View>
+    )}
+  </View>
+);
+
+
+
+  const Float = ({
+    icon,
+    text,
+    style,
+  }: {
+    icon: any;
+    text: string;
+    style: any;
+  }) => (
+    <View
+      accessible={false}
+      importantForAccessibility="no-hide-descendants"
+      style={[st.float, shadow, style]}
+    >
+      <Ionicons name={icon} size={18} color={C.emerald} />
+      <Text style={st.floatT}>{text}</Text>
+    </View>
+  );
+
+  return (
+    <ScrollView
+      ref={scroller}
+      style={{ flex: 1, backgroundColor: '#102B25' }}
+      contentContainerStyle={{ backgroundColor: '#102B25', flexGrow: 1 }}
+    >
+      <View
+        style={[
+          st.shell,
+          { marginHorizontal: wide ? 34 : 10, marginVertical: wide ? 28 : 10 },
+          gradient('linear-gradient(155deg, #20B85A 0%, #65D96F 34%, #B8F34A 63%, #168347 100%)'),
+        ]}
+      >
+      {/* Navbar scrolls away naturally */}
+      <View
+        {...mark('home')}
+        style={[st.nav, { paddingHorizontal: pad, flexWrap: 'wrap' }]}
+        accessibilityRole={'navigation' as any}
+      >
+        <View style={st.row}>
+          <View style={st.logo}>
+            <Ionicons name="shield-checkmark" size={20} color={C.white} />
+          </View>
+          <Text style={st.brand}>Smart Asset Vault</Text>
+        </View>
+
+        {wide && (
+          <View style={st.row}>
+            {(
+              [
+                ['Home', 'home'],
+                ['Features', 'features'],
+                ['How It Works', 'how'],
+                ['About', 'about'],
+                ['Contact', 'contact'],
+              ] as [string, Section][]
+            ).map(([label, section]) => (
+              <Pressable
+                key={section}
+                accessibilityRole="link"
+                onPress={() => go(section)}
+                style={(s: any) => [
+                  st.link,
+                  s.hovered && { backgroundColor: C.mint },
+                ]}
+              >
+                <Text style={st.linkT}>{label}</Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
+
+        <View style={st.row}>
+          <Pressable
+            accessibilityRole="link"
+            onPress={onSignIn}
+            style={st.link}
+          >
+            <Text style={st.linkT}>Sign In</Text>
+          </Pressable>
+          {wide && (
+            <Btn
+              primary
+              label="Choose Your Portal"
+              onPress={onChoosePortal}
+            />
+          )}
+        </View>
+      </View>
+
+      {/* Hero */}
+      <View
+        style={[
+          st.hero,
+          gradient('linear-gradient(135deg, #102B25 0%, #174C36 58%, #1D6841 100%)'),
+          {
+            marginHorizontal: wide ? 18 : 8,
+            marginTop: wide ? 18 : 8,
+            borderRadius: 28,
+            paddingHorizontal: pad,
+            flexDirection: wide ? 'row' : 'column',
+          },
+        ]}
+      >
+        <View style={{ flex: 1, gap: 20, paddingRight: wide ? 32 : 0 }}>
+          <Text
+            accessibilityRole="header"
+            style={[
+              st.h1,
+              {
+                color: '#F4FFE9',
+                fontSize: wide ? 54 : 36,
+                lineHeight: wide ? 62 : 44,
+              },
+            ]}
+          >
+            Your Important Documents, Secured for a Lifetime.
+          </Text>
+
+          <Text style={[st.lead, { color: '#D7EBDD' }]}>
+            Store your documents securely, verify them on the blockchain, and
+            share them only with the people you choose.
+          </Text>
+
+          <View style={[st.row, { flexWrap: 'wrap' }]}>
+            <Btn
+              primary
+              label="Choose Your Portal"
+              onPress={onChoosePortal}
+              icon="arrow-forward"
+            />
+            <Btn
+              label="Watch Demo"
+              onPress={watchDemo}
+              icon="play-circle-outline"
+            />
+          </View>
+
+          <View style={[st.row, { flexWrap: 'wrap', marginTop: 8 }]}>
+            {['Blockchain Verified', 'Tamper Proof', 'Role-Based Access'].map(
+              (label) => (
+                <View key={label} style={st.chip}>
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={16}
+                    color={C.emerald}
+                  />
+                  <Text style={st.chipT}>{label}</Text>
+                </View>
+              ),
+            )}
+          </View>
+        </View>
+
+        <View
+          style={{
+            flex: 1,
+            alignItems: 'center',
+            marginTop: wide ? 0 : 40,
+            paddingVertical: 16,
+          }}
+        >
+          <Phone
+            img={heroScreenshot.image}
+            alt={heroScreenshot.alt}
+            placeholder={heroScreenshot.placeholder}
+            w={phoneWidth}
+          />
+          <Float
+            icon="shield-checkmark"
+            text="Blockchain verified"
+            style={{ top: 40, left: wide ? 20 : -4 }}
+          />
+          <Float
+  icon="document-text-outline"
+  text="Document secured"
+  style={{ top: 150, right: wide ? 10 : -4 }}
+/>
+          <Float
+            icon="people-outline"
+            text="Shared with 2 people"
+            style={{ bottom: 50, left: wide ? 40 : -4 }}
+          />
+        </View>
+      </View>
+
+      {/* Feature cards */}
+      <View {...mark('features')} style={[st.sec, { paddingHorizontal: pad }]}>
+        <Text accessibilityRole="header" style={st.h2}>
+          Everything your documents need
+        </Text>
+
+        <View style={[st.grid, { flexDirection: wide ? 'row' : 'column' }]}>
+          {FEATURES.map((feature) => (
+            <Reveal key={feature.title} style={{ flex: 1 }}>
+              <Pressable
+                accessible={false}
+                style={(s: any) => [
+                  st.card,
+                  shadow,
+                  s.hovered && {
+                    transform: [{ translateY: -4 }],
+                    borderColor: C.emerald,
+                  },
+                ]}
+              >
+                <View style={st.icon}>
+                  <Ionicons
+                    name={feature.icon as any}
+                    size={24}
+                    color={C.emerald}
+                  />
+                </View>
+                <Text style={st.cardT}>{feature.title}</Text>
+                <Text style={st.cardD}>{feature.text}</Text>
+              </Pressable>
+            </Reveal>
+          ))}
+        </View>
+      </View>
+
+      {/* Alternating screenshot showcase */}
+      <View
+        {...mark('showcase')}
+        style={[st.sec, { paddingHorizontal: pad }]}
+      >
+        <Text accessibilityRole="header" style={st.h2}>
+          Explore Smart Asset Vault on Your Phone.
+        </Text>
+
+        {featureScreenshots.map((screenshot) => {
+          const shotLeft = screenshot.position === 'left';
+
+          const text = (
+            <View style={{ flex: 1, gap: 14, maxWidth: 480 }}>
+              <Text style={st.num}>
+                {String(screenshot.order).padStart(2, '0')}
+              </Text>
+              <Text accessibilityRole="header" style={st.h3}>
+                {screenshot.title}
+              </Text>
+              <Text style={st.lead}>{screenshot.description}</Text>
+            </View>
+          );
+
+          const shot = (
+            <View style={{ flex: 1, alignItems: 'center' }}>
+              <Phone
+                img={screenshot.image}
+                alt={screenshot.alt}
+                placeholder={screenshot.placeholder}
+                w={phoneWidth}
+              />
+            </View>
+          );
+
+          return (
+            <Reveal key={screenshot.id}>
+              <View
+                style={[
+                  st.showRow,
+                  {
+                    flexDirection: wide ? 'row' : 'column',
+                    gap: wide ? 64 : 24,
+                    minHeight: wide ? 520 : undefined,
+                  },
+                ]}
+              >
+                {wide ? (
+                  shotLeft ? (
+                    <>
+                      {shot}
+                      {text}
+                    </>
+                  ) : (
+                    <>
+                      {text}
+                      {shot}
+                    </>
+                  )
+                ) : (
+                  <>
+                    {shot}
+                    {text}
+                  </>
+                )}
+              </View>
+            </Reveal>
+          );
+        })}
+      </View>
+
+      {/* How it works */}
+      <View {...mark('how')} style={[st.sec, { paddingHorizontal: pad }]}>
+        <Text accessibilityRole="header" style={st.h2}>
+          How It Works
+        </Text>
+
+        <View style={[st.grid, { flexDirection: wide ? 'row' : 'column' }]}>
+          {STEPS.map((step, index) => (
+            <Reveal key={step.t} style={{ flex: 1 }}>
+              <View style={[st.card, { alignItems: 'center' }]}>
+                <View style={[st.icon, { backgroundColor: C.forest }]}>
+                  <Ionicons
+                    name={step.icon as any}
+                    size={24}
+                    color={C.white}
+                  />
+                </View>
+                <Text style={st.cardT}>
+                  {index + 1}. {step.t}
+                </Text>
+                <Text style={[st.cardD, { textAlign: 'center' }]}>
+                  {step.d}
+                </Text>
+              </View>
+            </Reveal>
+          ))}
+        </View>
+      </View>
+
+      {/* About */}
+      <View
+        {...mark('about')}
+        style={[st.sec, { paddingHorizontal: pad }]}
+      >
+        <Text accessibilityRole="header" style={st.h2}>
+          About
+        </Text>
+        <Text
+          style={[
+            st.lead,
+            {
+              textAlign: 'center',
+              maxWidth: 680,
+              alignSelf: 'center',
+            },
+          ]}
+        >
+          Smart Asset Vault is a hackathon project: a mobile document manager
+          with Supabase authentication, an Express API, and smart contracts
+          deployed on the Sepolia test network for document verification.
+        </Text>
+      </View>
+
+      {/* Final CTA */}
+      <View
+        style={[
+          st.cta,
+          gradient('linear-gradient(115deg, #102B25 0%, #17633B 52%, #20B85A 100%)'),
+          { marginHorizontal: pad },
+        ]}
+      >
+        <Text
+          accessibilityRole="header"
+          style={[st.h2, { color: C.white, marginBottom: 8 }]}
+        >
+          Ready to secure your documents?
+        </Text>
+        <Text style={[st.lead, { color: C.mint, textAlign: 'center' }]}>
+          Choose your portal to get started.
+        </Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={onChoosePortal}
+          style={(s: any) => [
+            st.btn,
+            { backgroundColor: C.white, marginTop: 16 },
+            s.hovered && { opacity: 0.9 },
+          ]}
+        >
+          <Text style={[st.btnT, { color: C.forest }]}>
+            Choose Your Portal
+          </Text>
+        </Pressable>
+      </View>
+
+      {/* Footer / Contact */}
+      <View
+        {...mark('contact')}
+        style={[st.footer, { paddingHorizontal: pad }]}
+      >
+        <Text style={st.brand}>Smart Asset Vault</Text>
+        <View style={[st.row, { flexWrap: 'wrap' }]}>
+          <Pressable accessibilityRole="link" onPress={onSignIn}>
+            <Text style={st.linkT}>Sign In</Text>
+          </Pressable>
+          <Pressable accessibilityRole="link" onPress={onChoosePortal}>
+            <Text style={st.linkT}>Choose Your Portal</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="link"
+            onPress={() => Linking.openURL(REPO_URL)}
+          >
+            <Text style={st.linkT}>Contact us on GitHub</Text>
+          </Pressable>
+        </View>
+        <Text style={{ color: C.muted, fontSize: 13 }}>
+          Hackathon project Â· Blockchain features run on the Sepolia test
+          network.
+        </Text>
+      </View>
+      </View>
+    </ScrollView>
+  );
+}
+
+const st = StyleSheet.create({
+  shell: {
+    borderRadius: 32,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(244,255,233,0.45)',
+  },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  nav: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+    gap: 12,
+    backgroundColor: 'rgba(244,255,233,0.20)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(16,43,37,0.16)',
+  },
+  logo: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: C.forest,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  brand: { fontFamily: 'RobotoMono_700Bold', fontSize: 18, fontWeight: '700', color: C.forest },
+  link: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999 },
+  linkT: { fontFamily: 'Inter_600SemiBold', fontSize: 15, fontWeight: '600', color: C.text },
+  btn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 22,
+    paddingVertical: 13,
+    borderRadius: 999,
+  },
+  btnP: { backgroundColor: '#D7FF55' },
+  btnS: { backgroundColor: C.white, borderWidth: 1.5, borderColor: C.forest },
+  btnT: { fontFamily: 'Inter_700Bold', fontSize: 15, fontWeight: '700' },
+  hero: {
+    paddingVertical: 64,
+    alignItems: 'center',
+    backgroundColor: '#102B25',
+  },
+  h1: { fontFamily: 'Inter_800ExtraBold', fontWeight: '800', color: C.forest },
+  h2: { fontFamily: 'Inter_800ExtraBold',
+    fontSize: 32,
+    fontWeight: '800',
+    color: C.forest,
+    textAlign: 'center',
+    marginBottom: 32,
+  },
+  h3: { fontFamily: 'Inter_800ExtraBold', fontSize: 30, fontWeight: '800', color: C.text },
+  lead: { fontFamily: 'Inter_400Regular', fontSize: 17, lineHeight: 27, color: C.muted },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: C.mint,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+  },
+  chipT: { fontFamily: 'Inter_600SemiBold', fontSize: 13, fontWeight: '600', color: C.forest },
+  phone: {
+    borderRadius: 32,
+    borderWidth: 8,
+    borderColor: C.text,
+    overflow: 'hidden',
+    backgroundColor: C.text,
+  },
+  badge: {
+    position: 'absolute',
+    top: 10,
+    alignSelf: 'center',
+    backgroundColor: C.forest,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  badgeT: { fontFamily: 'RobotoMono_700Bold', color: C.white, fontSize: 11, fontWeight: '700' },
+  float: {
+    position: 'absolute',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: C.white,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 14,
+  },
+  floatT: { fontFamily: 'Inter_600SemiBold', fontSize: 13, fontWeight: '600', color: C.text },
+  sec: {
+    paddingVertical: 72,
+    backgroundColor: 'transparent',
+  },
+  grid: { gap: 20, maxWidth: 1100, width: '100%', alignSelf: 'center' },
+  card: {
+    backgroundColor: 'rgba(244,255,233,0.90)',
+    borderRadius: 20,
+    padding: 24,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: C.sage,
+    flex: 1,
+  },
+  icon: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: '#D7FF8A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardT: { fontFamily: 'Inter_700Bold', fontSize: 18, fontWeight: '700', color: C.text },
+  cardD: { fontFamily: 'Inter_400Regular', fontSize: 15, lineHeight: 23, color: C.muted },
+  showRow: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
+  num: { fontFamily: 'RobotoMono_700Bold', fontSize: 14, fontWeight: '800', color: C.emerald, letterSpacing: 2 },
+  cta: {
+    borderRadius: 28,
+    paddingVertical: 48,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+  },
+  footer: {
+    paddingTop: 32,
+    paddingBottom: 40,
+    gap: 18,
+    alignItems: 'center',
+    backgroundColor: 'rgba(16,43,37,0.10)',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(16,43,37,0.18)',
+  },
+});
+
+

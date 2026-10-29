@@ -1,6 +1,6 @@
 
 import { Tabs } from 'expo-router';
-import { StyleSheet, type ColorValue } from 'react-native';
+import { Platform, StyleSheet, type ColorValue } from 'react-native';
 import { Icon, type IconName } from '@/components';
 import { colors, fonts } from '@/theme';
 
@@ -28,6 +28,7 @@ export default function TabsLayout() {
           borderTopColor: colors.rule,
           borderTopWidth: StyleSheet.hairlineWidth,
           elevation: 0,
+          ...(Platform.OS === 'web' ? { display: 'none' as const } : {}),
         },
         sceneStyle: { backgroundColor: colors.paper },
       }}
