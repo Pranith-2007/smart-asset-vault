@@ -14,7 +14,7 @@ export type IconName = React.ComponentProps<typeof Ionicons>['name'];
 /** Single source of truth for responsive sizes, so every section uses the same rhythm. */
 export function useLayout() {
   const { width } = useWindowDimensions();
-  const desktop = width >= 960;
+  const desktop = width >= 1100;
   const tablet = width >= 700;
   return {
     width, desktop, tablet, mobile: !tablet,
