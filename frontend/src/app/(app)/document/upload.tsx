@@ -46,6 +46,11 @@ export default function UploadDocument() {
       const res = await DocumentPicker.getDocumentAsync({ type: ['application/pdf', 'image/*'], copyToCacheDirectory: true, multiple: false });
       if (res.canceled) return;
       const f = res.assets[0];
+      console.log('PICKED FILE:', {
+      uri: f.uri,
+      name: f.name,
+      size: f.size,
+});
       if ((f.size ?? 0) > MAX_BYTES) {
         setErrors((e) => ({ ...e, file: 'That file is larger than 25 MB. Choose a smaller one.' }));
         return;

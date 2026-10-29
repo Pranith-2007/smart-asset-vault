@@ -5,7 +5,7 @@
     "scheme": "assetvault",
     "version": "0.1.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/Smart Asset Vault Security Badge.png",
     "userInterfaceStyle": "light",
     "android": {
       "package": "com.example.smartassetvault",
@@ -23,7 +23,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/splash-icon.png",
+          "image": "./assets/Smart Asset Vault Security Badge.png",
           "imageWidth": 168,
           "backgroundColor": "#E8EBE8"
         }

@@ -1,7 +1,7 @@
 
 import { supabase } from "@/lib/supabase";
 
-const BLOCKCHAIN_API_URL = "http://localhost:3001";
+const BLOCKCHAIN_API_URL = "http://10.188.119.227:3001";
 
 export type BlockchainRegistration = {
   documentId: string;

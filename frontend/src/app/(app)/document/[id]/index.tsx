@@ -2,6 +2,7 @@ import { verifyStoredDocument } from '@/services/blockchainService';
 import { Alert, Image, Platform, StyleSheet, View } from 'react-native';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { WebView } from 'react-native-webview';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { AppText, Banner, Button, Entry, Icon, KeyValue, Register, Screen, ScreenHeader, SectionHeader, useDetailGuard } from '@/components';
 import { accessLabel, categoryMeta, kindMeta } from '@/domain/labels';
@@ -11,6 +12,7 @@ import { useVault } from '@/state/vault';
 import { colors, radius, space } from '@/theme';
 import { daysUntil } from '@/utils/date';
 import { expiryLabel, formatBytes, formatDate } from '@/utils/format';
+import { router } from 'expo-router';
 
 function PagePlaceholder({ certified }: { certified: boolean }) {
   const lines = [0.9, 0.78, 0.86, 0.5, 0.82, 0.7, 0.88, 0.4];
@@ -27,24 +29,164 @@ function PagePlaceholder({ certified }: { certified: boolean }) {
   );
 }
 
+
 function PdfPreview({ uri }: { uri: string }) {
-  if (Platform.OS === 'web') {
+  const [html, setHtml] = useState('');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadPdf() {
+      try {
+        setHtml('');
+        setError('');
+
+        const response = await fetch(uri);
+
+        if (!response.ok) {
+          throw new Error('Could not load the PDF from storage.');
+        }
+
+        const buffer = await response.arrayBuffer();
+        const bytes = new Uint8Array(buffer);
+
+        // Convert the PDF bytes to base64 for PDF.js.
+        let binary = '';
+        const chunkSize = 8192;
+
+        for (let i = 0; i < bytes.length; i += chunkSize) {
+          binary += String.fromCharCode(
+            ...bytes.subarray(i, Math.min(i + chunkSize, bytes.length))
+          );
+        }
+
+        const base64 = btoa(binary);
+
+        const viewerHtml = `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+              * { box-sizing: border-box; }
+              body {
+                margin: 0;
+                padding: 12px;
+                background: #eeeeee;
+                font-family: sans-serif;
+              }
+              #pages { width: 100%; }
+              canvas {
+                display: block;
+                width: 100%;
+                height: auto;
+                margin: 0 auto 12px;
+                background: white;
+                box-shadow: 0 1px 5px #999;
+              }
+              #status {
+                text-align: center;
+                padding: 20px;
+                color: #444;
+              }
+            </style>
+          </head>
+          <body>
+            <div id="status">Loading PDF…</div>
+            <div id="pages"></div>
+
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+            <script>
+              (async function () {
+                try {
+                  if (!window.pdfjsLib) {
+                    throw new Error('PDF viewer library could not load.');
+                  }
+
+                  pdfjsLib.GlobalWorkerOptions.workerSrc =
+                    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+                  const binary = atob('${base64}');
+                  const data = new Uint8Array(binary.length);
+
+                  for (let i = 0; i < binary.length; i++) {
+                    data[i] = binary.charCodeAt(i);
+                  }
+
+                  const pdf = await pdfjsLib.getDocument({ data }).promise;
+                  document.getElementById('status').textContent = '';
+
+                  const container = document.getElementById('pages');
+
+                  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+                    const page = await pdf.getPage(pageNumber);
+                    const viewport = page.getViewport({ scale: 1.5 });
+                    const canvas = document.createElement('canvas');
+                    const context = canvas.getContext('2d');
+
+                    canvas.width = viewport.width;
+                    canvas.height = viewport.height;
+                    container.appendChild(canvas);
+
+                    await page.render({
+                      canvasContext: context,
+                      viewport: viewport
+                    }).promise;
+                  }
+                } catch (error) {
+                  document.getElementById('status').textContent =
+                    'Unable to display this PDF: ' + error.message;
+                }
+              })();
+            </script>
+          </body>
+          </html>
+        `;
+
+        if (!cancelled) setHtml(viewerHtml);
+      } catch (e) {
+        if (!cancelled) {
+          setError(
+            e instanceof Error ? e.message : 'Could not display this PDF.'
+          );
+        }
+      }
+    }
+
+    void loadPdf();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [uri]);
+
+  if (error) {
     return (
-      <iframe
-        src={uri}
-        title="PDF document preview"
-        style={{
-          width: '100%',
-          height: '70vh',
-          border: 'none',
-          background: '#fff',
-        }}
-      />
+      <View style={{ padding: 20 }}>
+        <AppText>{error}</AppText>
+      </View>
     );
   }
 
-  return null;
+  if (!html) {
+    return (
+      <View style={{ padding: 24, alignItems: 'center' }}>
+        <AppText>Loading PDF preview…</AppText>
+      </View>
+    );
+  }
+
+  return (
+    <WebView
+      source={{ html }}
+      originWhitelist={['*']}
+      javaScriptEnabled
+      style={{ width: '100%', height: 500, backgroundColor: '#eeeeee' }}
+    />
+  );
 }
+
 
 
 export default function DocumentPreview() {
@@ -54,6 +196,7 @@ export default function DocumentPreview() {
   const vault = useVault();
   const doc = vault.documents.find((d) => d.id === id);
   const [verifying, setVerifying] = useState(false);
+  
 const [verificationResult, setVerificationResult] = useState<{
   status: 'verified' | 'mismatch' | 'not_registered';
   actualHash?: string;
@@ -63,6 +206,17 @@ const [verificationError, setVerificationError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageError, setImageError] = useState(false);
+const openPdfPreview = () => {
+  if (!imageUrl || !doc) return;
+
+  router.push({
+    pathname: '/shared/pdf-viewer',
+    params: {
+      uri: imageUrl,
+      title: doc.title,
+    },
+  });
+};
 
   const guard = useDetailGuard('Document', !!doc, 'document');
 
@@ -112,6 +266,7 @@ const [verificationError, setVerificationError] = useState<string | null>(null);
       cancelled = true;
     };
   }, [doc?.id, doc?.mimeType]);
+
 
  const handleVerifyIntegrity = async () => {
   if (!doc || verifying) return;
@@ -271,23 +426,17 @@ const handleDelete = () => {
     accessibilityLabel={`Preview of ${doc.title}`}
   />
 ) : doc.mimeType === 'application/pdf' && imageUrl ? (
-  <PdfPreview uri={imageUrl} />
+  <Button
+    title="Preview PDF"
+    icon="file-text"
+    onPress={openPdfPreview}
+  />
 ) : (
   <PagePlaceholder certified={doc.certifiedCopy} />
 )}
 
 
-{doc.mimeType === 'application/pdf' && imageUrl ? (
-  <Button
-    title="Open PDF"
-    icon="file-text"
-    onPress={() => {
-      void import('expo-web-browser').then(({ openBrowserAsync }) =>
-        openBrowserAsync(imageUrl)
-      );
-    }}
-  />
-) : null}
+
 
         <AppText variant="small" tone="muted" style={{ textAlign: 'center', paddingHorizontal: space.xl }}>
           {isImage

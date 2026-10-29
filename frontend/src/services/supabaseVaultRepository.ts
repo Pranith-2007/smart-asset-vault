@@ -3,6 +3,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
 import { decode } from 'base64-arraybuffer';
 import { supabase } from '@/lib/supabase';
+import { File } from 'expo-file-system';
 import type {
   ActivityEvent,
   Asset,
@@ -283,12 +284,38 @@ if (Platform.OS === 'web') {
   const response = await fetch(input.localUri);
   const blob = await response.blob();
   fileBytes = await blob.arrayBuffer();
+
+
+
+
 } else {
-  const base64 = await FileSystem.readAsStringAsync(input.localUri, {
-    encoding: FileSystem.EncodingType.Base64,
+  const response = await fetch(input.localUri);
+  const blob = await response.blob();
+
+  const base64 = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onerror = () => {
+      reject(new Error('Could not read the selected file.'));
+    };
+
+    reader.onloadend = () => {
+      if (typeof reader.result !== 'string') {
+        reject(new Error('Could not convert the selected file.'));
+        return;
+      }
+
+      resolve(reader.result.split(',')[1] ?? '');
+    };
+
+    reader.readAsDataURL(blob);
   });
+
   fileBytes = decode(base64);
 }
+
+
+
 
     if (fileBytes.byteLength > 25 * 1024 * 1024) {
       throw new RepositoryError('The document must be 25 MB or smaller.');
