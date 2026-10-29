@@ -1,13 +1,24 @@
-import { View } from 'react-native';
+
+import { Image, View } from 'react-native';
 import { space } from '@/theme';
 import { AppText } from './AppText';
-import { Dial } from './Dial';
 
-/** The wordmark shown at the top of the portal, sign-in and sign-up screens. */
 export function AuthBrand() {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
-      <Dial value={8} size={40} showValue={false} />
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: space.md,
+      }}
+    >
+      <Image
+        source={require('../../assets/sav-logo.png')}
+        style={{ width: 48, height: 48 }}
+        resizeMode="contain"
+        accessibilityLabel="Smart Asset Vault logo"
+      />
+
       <AppText variant="heading">Smart Asset Vault</AppText>
     </View>
   );
