@@ -26,7 +26,7 @@ export function AppWebNavigation() {
   const pathname = usePathname();
   const router = useRouter();
 
-  if (width < 768) return null;
+  
 
   const navigate = (path: string) => {
     setOpen(false);
@@ -133,7 +133,7 @@ export function AppWebNavigation() {
 const styles = StyleSheet.create({
   header: {
     height: 76,
-    paddingHorizontal: 32,
+    paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
